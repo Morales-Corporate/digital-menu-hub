@@ -79,22 +79,31 @@ export type Database = {
       }
       ordenes: {
         Row: {
+          comprobante_pago: string | null
           created_at: string | null
+          estado: string
           id: string
+          metodo_pago: string | null
           puntos_ganados: number
           total: number
           user_id: string
         }
         Insert: {
+          comprobante_pago?: string | null
           created_at?: string | null
+          estado?: string
           id?: string
+          metodo_pago?: string | null
           puntos_ganados?: number
           total?: number
           user_id: string
         }
         Update: {
+          comprobante_pago?: string | null
           created_at?: string | null
+          estado?: string
           id?: string
+          metodo_pago?: string | null
           puntos_ganados?: number
           total?: number
           user_id?: string
