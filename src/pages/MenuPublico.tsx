@@ -3,10 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, UtensilsCrossed, LogIn } from 'lucide-react';
+import { Loader2, UtensilsCrossed, LogIn, Plus } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
+import { useCart } from '@/hooks/useCart';
+import { CartSheet } from '@/components/CartSheet';
 import UserMenu from '@/components/UserMenu';
+import { toast } from 'sonner';
 
 type Producto = Tables<'productos'>;
 type Categoria = Tables<'categorias'>;
@@ -17,6 +20,7 @@ interface ProductoConCategoria extends Producto {
 
 export default function MenuPublico() {
   const { user } = useAuth();
+  const { addItem } = useCart();
 
   const { data: categorias, isLoading: loadingCategorias } = useQuery({
     queryKey: ['menu-categorias'],
@@ -48,6 +52,15 @@ export default function MenuPublico() {
   const getProductosByCategoria = (categoriaId: string) => {
     return productos?.filter(p => p.categoria_id === categoriaId) ?? [];
   };
+  const handleAddToCart = (producto: Producto) => {
+    addItem({
+      id: producto.id,
+      nombre: producto.nombre,
+      precio: Number(producto.precio),
+      imagen_url: producto.imagen_url
+    });
+    toast.success(`${producto.nombre} agregado al carrito`);
+  };
 
   const productosWithoutCategoria = productos?.filter(p => !p.categoria_id) ?? [];
 
@@ -63,6 +76,7 @@ export default function MenuPublico() {
             <span className="font-display text-xl font-semibold">Nuestro Menú</span>
           </div>
           <div className="flex items-center gap-2">
+            {user && <CartSheet />}
             {user ? (
               <UserMenu />
             ) : (
@@ -120,7 +134,12 @@ export default function MenuPublico() {
                   </h2>
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {categoryProducts.map((producto) => (
-                      <ProductCard key={producto.id} producto={producto} />
+                      <ProductCard 
+                        key={producto.id} 
+                        producto={producto} 
+                        onAddToCart={() => handleAddToCart(producto)}
+                        showAddButton={!!user}
+                      />
                     ))}
                   </div>
                 </section>
@@ -134,7 +153,12 @@ export default function MenuPublico() {
                 </h2>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {productosWithoutCategoria.map((producto) => (
-                    <ProductCard key={producto.id} producto={producto} />
+                    <ProductCard 
+                      key={producto.id} 
+                      producto={producto}
+                      onAddToCart={() => handleAddToCart(producto)}
+                      showAddButton={!!user}
+                    />
                   ))}
                 </div>
               </section>
@@ -153,7 +177,13 @@ export default function MenuPublico() {
   );
 }
 
-function ProductCard({ producto }: { producto: Producto }) {
+interface ProductCardProps {
+  producto: Producto;
+  onAddToCart?: () => void;
+  showAddButton?: boolean;
+}
+
+function ProductCard({ producto, onAddToCart, showAddButton }: ProductCardProps) {
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       {producto.imagen_url && (
@@ -169,13 +199,22 @@ function ProductCard({ producto }: { producto: Producto }) {
         <div className="flex justify-between items-start gap-2 mb-2">
           <h3 className="font-display text-lg font-medium">{producto.nombre}</h3>
           <span className="font-semibold text-primary text-lg whitespace-nowrap">
-            ${Number(producto.precio).toFixed(2)}
+            S/ {Number(producto.precio).toFixed(2)}
           </span>
         </div>
         {producto.descripcion && (
-          <p className="text-sm text-muted-foreground line-clamp-3">
+          <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
             {producto.descripcion}
           </p>
+        )}
+        {showAddButton && (
+          <Button 
+            onClick={onAddToCart} 
+            size="sm" 
+            className="w-full"
+          >
+            <Plus className="h-4 w-4 mr-2" /> Agregar
+          </Button>
         )}
       </CardContent>
     </Card>

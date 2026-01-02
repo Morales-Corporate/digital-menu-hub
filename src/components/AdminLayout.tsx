@@ -10,7 +10,8 @@ import {
   LogOut, 
   Menu, 
   X,
-  ChevronRight
+  ChevronRight,
+  ClipboardList
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -20,6 +21,7 @@ interface AdminLayoutProps {
 const navItems = [
   { href: '/admin/categorias', label: 'Categorías', icon: LayoutGrid },
   { href: '/admin/productos', label: 'Productos', icon: UtensilsCrossed },
+  { href: '/admin/ordenes', label: 'Pedidos', icon: ClipboardList },
   { href: '/', label: 'Ver Menú', icon: Eye, external: true },
 ];
 
