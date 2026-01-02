@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, UtensilsCrossed, LogIn } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
+import UserMenu from '@/components/UserMenu';
 
 type Producto = Tables<'productos'>;
 type Categoria = Tables<'categorias'>;
@@ -15,7 +16,7 @@ interface ProductoConCategoria extends Producto {
 }
 
 export default function MenuPublico() {
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
 
   const { data: categorias, isLoading: loadingCategorias } = useQuery({
     queryKey: ['menu-categorias'],
@@ -63,11 +64,7 @@ export default function MenuPublico() {
           </div>
           <div className="flex items-center gap-2">
             {user ? (
-              isAdmin && (
-                <Button asChild variant="outline" size="sm">
-                  <Link to="/admin">Panel Admin</Link>
-                </Button>
-              )
+              <UserMenu />
             ) : (
               <Button asChild variant="ghost" size="sm">
                 <Link to="/auth">
