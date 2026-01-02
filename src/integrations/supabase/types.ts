@@ -35,6 +35,72 @@ export type Database = {
         }
         Relationships: []
       }
+      orden_items: {
+        Row: {
+          cantidad: number
+          created_at: string | null
+          id: string
+          orden_id: string
+          precio_unitario: number
+          producto_id: string | null
+        }
+        Insert: {
+          cantidad?: number
+          created_at?: string | null
+          id?: string
+          orden_id: string
+          precio_unitario: number
+          producto_id?: string | null
+        }
+        Update: {
+          cantidad?: number
+          created_at?: string | null
+          id?: string
+          orden_id?: string
+          precio_unitario?: number
+          producto_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orden_items_orden_id_fkey"
+            columns: ["orden_id"]
+            isOneToOne: false
+            referencedRelation: "ordenes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orden_items_producto_id_fkey"
+            columns: ["producto_id"]
+            isOneToOne: false
+            referencedRelation: "productos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordenes: {
+        Row: {
+          created_at: string | null
+          id: string
+          puntos_ganados: number
+          total: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          puntos_ganados?: number
+          total?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          puntos_ganados?: number
+          total?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       productos: {
         Row: {
           categoria_id: string | null
@@ -84,25 +150,55 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           email: string | null
+          fecha_nacimiento: string | null
           full_name: string | null
           id: string
+          telefono: string | null
           updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string | null
           email?: string | null
+          fecha_nacimiento?: string | null
           full_name?: string | null
           id: string
+          telefono?: string | null
           updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string | null
           email?: string | null
+          fecha_nacimiento?: string | null
           full_name?: string | null
           id?: string
+          telefono?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      puntos_usuario: {
+        Row: {
+          created_at: string | null
+          id: string
+          puntos_totales: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          puntos_totales?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          puntos_totales?: number
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }

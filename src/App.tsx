@@ -7,6 +7,8 @@ import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import MenuPublico from "@/pages/MenuPublico";
 import Auth from "@/pages/Auth";
+import MiCuenta from "@/pages/MiCuenta";
+import MisOrdenes from "@/pages/MisOrdenes";
 import AdminIndex from "@/pages/admin/AdminIndex";
 import Categorias from "@/pages/admin/Categorias";
 import Productos from "@/pages/admin/Productos";
@@ -25,6 +27,18 @@ const App = () => (
             {/* Public routes */}
             <Route path="/" element={<MenuPublico />} />
             <Route path="/auth" element={<Auth />} />
+            
+            {/* User routes - protected */}
+            <Route path="/mi-cuenta" element={
+              <ProtectedRoute>
+                <MiCuenta />
+              </ProtectedRoute>
+            } />
+            <Route path="/mis-ordenes" element={
+              <ProtectedRoute>
+                <MisOrdenes />
+              </ProtectedRoute>
+            } />
             
             {/* Admin routes - protected and require admin role */}
             <Route path="/admin" element={
