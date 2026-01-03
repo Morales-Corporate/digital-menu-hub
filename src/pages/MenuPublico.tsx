@@ -352,9 +352,6 @@ export default function MenuPublico() {
                   <span className="font-semibold">S/ {ultimaOrdenEntregada.total.toFixed(2)}</span>
                   <span className="text-xs text-primary ml-2">+{ultimaOrdenEntregada.puntos_ganados} pts</span>
                 </div>
-                <Button size="sm" variant="outline" onClick={handleRepeatOrder}>
-                  <RefreshCw className="h-3 w-3 mr-1" /> Repetir
-                </Button>
               </div>
             </CardContent>
           </Card>

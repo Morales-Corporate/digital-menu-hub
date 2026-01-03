@@ -35,6 +35,7 @@ interface Order {
     email: string | null;
     telefono: string | null;
     direccion: string | null;
+    referencia_direccion: string | null;
     latitud: number | null;
     longitud: number | null;
   } | null;
@@ -73,14 +74,14 @@ export default function Ordenes() {
             productos (nombre)
           )
         `)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (ordersError) throw ordersError;
       
       const userIds = [...new Set(ordersData?.map(o => o.user_id) || [])];
       const { data: profilesData } = await supabase
         .from('profiles')
-        .select('id, full_name, email, telefono, direccion, latitud, longitud')
+        .select('id, full_name, email, telefono, direccion, referencia_direccion, latitud, longitud')
         .in('id', userIds);
       
       const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
@@ -286,6 +287,11 @@ export default function Ordenes() {
                               <MapPin className="h-3 w-3" /> Dirección de entrega
                             </p>
                             <p className="font-medium">{selectedOrder.profiles?.direccion || 'Sin dirección'}</p>
+                            {selectedOrder.profiles?.referencia_direccion && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Ref: {selectedOrder.profiles.referencia_direccion}
+                              </p>
+                            )}
                           </div>
                           {selectedOrder.profiles?.latitud && selectedOrder.profiles?.longitud && (
                             <div className="col-span-2">
@@ -320,7 +326,7 @@ export default function Ordenes() {
                           <span>Total:</span>
                           <span>S/ {selectedOrder.total.toFixed(2)}</span>
                         </div>
-                        {selectedOrder.comprobante_pago && (
+                        {selectedOrder.comprobante_pago && selectedOrder.estado === 'pendiente' && (
                           <Button 
                             variant="outline" 
                             className="w-full mt-4"
@@ -334,7 +340,7 @@ export default function Ordenes() {
                     )}
                   </DialogContent>
                 </Dialog>
-                {order.comprobante_pago && (
+                {order.comprobante_pago && order.estado === 'pendiente' && (
                   <Button 
                     variant="outline" 
                     size="sm" 
