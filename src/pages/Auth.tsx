@@ -101,7 +101,7 @@ export default function Auth() {
         </CardHeader>
         <CardContent>
           {isLogin ? (
-            <Form {...loginForm}>
+            <Form key="login" {...loginForm}>
               <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
                 <FormField
                   control={loginForm.control}
@@ -142,7 +142,7 @@ export default function Auth() {
               </form>
             </Form>
           ) : (
-            <Form {...signUpForm}>
+            <Form key="signup" {...signUpForm}>
               <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-4">
                 <FormField
                   control={signUpForm.control}
@@ -214,12 +214,13 @@ export default function Auth() {
             <button
               type="button"
               onClick={() => {
-                if (isLogin) {
-                  loginForm.reset();
-                } else {
-                  signUpForm.reset();
-                }
-                setIsLogin(!isLogin);
+                // Reset BOTH forms to avoid stale RHF state when switching providers
+                loginForm.reset({ email: '', password: '' });
+                loginForm.clearErrors();
+                signUpForm.reset({ email: '', password: '', confirmPassword: '', fullName: '' });
+                signUpForm.clearErrors();
+                setIsSubmitting(false);
+                setIsLogin((v) => !v);
               }}
               className="text-sm text-muted-foreground hover:text-primary transition-colors"
             >
