@@ -5,22 +5,29 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, CheckCircle, Clock, QrCode, Upload, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, CheckCircle, Clock, QrCode, Upload, Loader2, Banknote, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 
-type OrderStatus = 'resumen' | 'pago' | 'confirmando' | 'confirmado';
+type OrderStatus = 'resumen' | 'metodo' | 'pago' | 'confirmando' | 'confirmado';
+type PaymentMethod = 'yape_plin' | 'efectivo' | 'tarjeta';
 
 export default function Checkout() {
   const { items, total, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [status, setStatus] = useState<OrderStatus>('resumen');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isCheckingProfile, setIsCheckingProfile] = useState(true);
+  const [montoPago, setMontoPago] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const vuelto = montoPago ? parseFloat(montoPago) - total : 0;
 
   // Check if user profile is complete before allowing checkout
   useEffect(() => {
@@ -77,6 +84,11 @@ export default function Checkout() {
   }, [orderId]);
 
   const handleProceedToPayment = () => {
+    setStatus('metodo');
+  };
+
+  const handleSelectPaymentMethod = (method: PaymentMethod) => {
+    setPaymentMethod(method);
     setStatus('pago');
   };
 
@@ -105,34 +117,48 @@ export default function Checkout() {
       return;
     }
 
-    if (!receiptFile) {
+    if (paymentMethod === 'yape_plin' && !receiptFile) {
       toast.error('Por favor sube el comprobante de pago');
       return;
+    }
+
+    if (paymentMethod === 'efectivo') {
+      const montoNumerico = parseFloat(montoPago);
+      if (!montoPago || isNaN(montoNumerico) || montoNumerico < total) {
+        toast.error('El monto debe ser igual o mayor al total');
+        return;
+      }
     }
 
     setIsUploading(true);
 
     try {
-      // Upload receipt first
-      const fileExt = receiptFile.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('comprobantes-pago')
-        .upload(fileName, receiptFile);
+      let comprobantePath: string | null = null;
 
-      if (uploadError) throw uploadError;
+      // Upload receipt only for yape_plin
+      if (paymentMethod === 'yape_plin' && receiptFile) {
+        const fileExt = receiptFile.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('comprobantes-pago')
+          .upload(fileName, receiptFile);
 
-      // Create order with receipt reference
+        if (uploadError) throw uploadError;
+        comprobantePath = fileName;
+      }
+
+      // Create order
       const { data: order, error: orderError } = await supabase
         .from('ordenes')
         .insert({
           user_id: user.id,
           total: total,
           estado: 'pendiente',
-          metodo_pago: 'yape_plin',
+          metodo_pago: paymentMethod,
           puntos_ganados: Math.floor(total),
-          comprobante_pago: fileName
+          comprobante_pago: comprobantePath,
+          monto_pago: paymentMethod === 'efectivo' ? parseFloat(montoPago) : null
         })
         .select()
         .single();
@@ -155,7 +181,7 @@ export default function Checkout() {
 
       setOrderId(order.id);
       setStatus('confirmando');
-      clearCart(); // Clear cart immediately after order is created
+      clearCart();
       toast.info('Pedido enviado. Esperando confirmación del restaurante...');
 
     } catch (error: any) {
@@ -169,6 +195,14 @@ export default function Checkout() {
   const handleFinish = () => {
     clearCart();
     navigate('/mi-cuenta');
+  };
+
+  const getPaymentMethodLabel = (method: PaymentMethod) => {
+    switch (method) {
+      case 'yape_plin': return 'Yape/Plin';
+      case 'efectivo': return 'Efectivo';
+      case 'tarjeta': return 'Tarjeta (POS)';
+    }
   };
 
   if (isCheckingProfile) {
@@ -194,7 +228,11 @@ export default function Checkout() {
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-md mx-auto">
         {status !== 'confirmado' && (
-          <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
+          <Button variant="ghost" onClick={() => {
+            if (status === 'pago') setStatus('metodo');
+            else if (status === 'metodo') setStatus('resumen');
+            else navigate(-1);
+          }} className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" /> Volver
           </Button>
         )}
@@ -228,7 +266,59 @@ export default function Checkout() {
           </Card>
         )}
 
-        {status === 'pago' && (
+        {status === 'metodo' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Método de Pago</CardTitle>
+              <CardDescription>Selecciona cómo deseas pagar</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button 
+                variant="outline" 
+                className="w-full h-20 flex items-center justify-start gap-4 text-left"
+                onClick={() => handleSelectPaymentMethod('yape_plin')}
+              >
+                <div className="bg-primary/10 p-3 rounded-full">
+                  <QrCode className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold">Yape / Plin</p>
+                  <p className="text-sm text-muted-foreground">Pago con código QR</p>
+                </div>
+              </Button>
+
+              <Button 
+                variant="outline" 
+                className="w-full h-20 flex items-center justify-start gap-4 text-left"
+                onClick={() => handleSelectPaymentMethod('efectivo')}
+              >
+                <div className="bg-green-500/10 p-3 rounded-full">
+                  <Banknote className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="font-semibold">Efectivo</p>
+                  <p className="text-sm text-muted-foreground">Pago contra entrega</p>
+                </div>
+              </Button>
+
+              <Button 
+                variant="outline" 
+                className="w-full h-20 flex items-center justify-start gap-4 text-left"
+                onClick={() => handleSelectPaymentMethod('tarjeta')}
+              >
+                <div className="bg-blue-500/10 p-3 rounded-full">
+                  <CreditCard className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-semibold">Tarjeta (POS)</p>
+                  <p className="text-sm text-muted-foreground">El repartidor lleva el POS</p>
+                </div>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {status === 'pago' && paymentMethod === 'yape_plin' && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -238,7 +328,6 @@ export default function Checkout() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="bg-muted p-4 rounded-lg flex flex-col items-center">
-                {/* Placeholder QR - In production, replace with actual QR image */}
                 <div className="w-48 h-48 bg-white rounded-lg flex items-center justify-center border-2 border-dashed border-muted-foreground/30">
                   <div className="text-center text-muted-foreground">
                     <QrCode className="h-16 w-16 mx-auto mb-2" />
@@ -255,7 +344,6 @@ export default function Checkout() {
                 <p className="text-center text-2xl font-bold text-primary">S/ {total.toFixed(2)}</p>
               </div>
 
-              {/* Receipt upload section */}
               <div className="space-y-3">
                 <p className="text-sm font-medium text-center">Sube tu comprobante de pago</p>
                 <input
@@ -313,6 +401,101 @@ export default function Checkout() {
           </Card>
         )}
 
+        {status === 'pago' && paymentMethod === 'efectivo' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Banknote className="h-5 w-5 text-green-600" /> Pago en Efectivo
+              </CardTitle>
+              <CardDescription>El pago se realizará al momento de la entrega</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="bg-green-500/10 p-4 rounded-lg">
+                <p className="text-center text-lg font-bold">Total a pagar:</p>
+                <p className="text-center text-2xl font-bold text-green-600">S/ {total.toFixed(2)}</p>
+              </div>
+
+              <div className="space-y-3">
+                <Label htmlFor="montoPago">¿Con cuánto pagarás?</Label>
+                <Input
+                  id="montoPago"
+                  type="number"
+                  placeholder="Ej: 50.00"
+                  value={montoPago}
+                  onChange={(e) => setMontoPago(e.target.value)}
+                  min={total}
+                  step="0.01"
+                />
+                {montoPago && parseFloat(montoPago) >= total && (
+                  <div className="bg-muted p-3 rounded-lg text-center">
+                    <p className="text-sm text-muted-foreground">Tu vuelto será:</p>
+                    <p className="text-xl font-bold text-primary">S/ {vuelto.toFixed(2)}</p>
+                  </div>
+                )}
+                {montoPago && parseFloat(montoPago) < total && (
+                  <p className="text-sm text-destructive">El monto debe ser igual o mayor al total</p>
+                )}
+              </div>
+
+              <Button 
+                className="w-full" 
+                size="lg" 
+                onClick={handleConfirmPayment}
+                disabled={!montoPago || parseFloat(montoPago) < total || isUploading}
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enviando pedido...
+                  </>
+                ) : (
+                  'Confirmar pedido'
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {status === 'pago' && paymentMethod === 'tarjeta' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-blue-600" /> Pago con Tarjeta
+              </CardTitle>
+              <CardDescription>El repartidor llevará el POS para tu pago</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="bg-blue-500/10 p-4 rounded-lg">
+                <p className="text-center text-lg font-bold">Total a pagar:</p>
+                <p className="text-center text-2xl font-bold text-blue-600">S/ {total.toFixed(2)}</p>
+              </div>
+
+              <div className="bg-muted p-4 rounded-lg text-center">
+                <CreditCard className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Al momento de la entrega, el repartidor tendrá un POS disponible para que puedas pagar con tu tarjeta de débito o crédito.
+                </p>
+              </div>
+
+              <Button 
+                className="w-full" 
+                size="lg" 
+                onClick={handleConfirmPayment}
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enviando pedido...
+                  </>
+                ) : (
+                  'Confirmar pedido'
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {status === 'confirmando' && (
           <Card>
             <CardHeader>
@@ -327,11 +510,14 @@ export default function Checkout() {
                 </div>
                 <p className="text-lg font-medium">Tu pedido está siendo verificado</p>
                 <p className="text-muted-foreground mt-2">
-                  El restaurante confirmará tu pago en breve
+                  El restaurante confirmará tu pedido en breve
                 </p>
               </div>
               <div className="text-sm text-muted-foreground">
                 Número de orden: <span className="font-mono">{orderId?.slice(0, 8)}</span>
+              </div>
+              <div className="text-sm">
+                Método de pago: <span className="font-semibold">{paymentMethod && getPaymentMethodLabel(paymentMethod)}</span>
               </div>
             </CardContent>
           </Card>

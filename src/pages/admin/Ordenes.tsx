@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, Clock, Eye, RefreshCw, Image as ImageIcon, Truck, Package, MapPin, Phone, User } from 'lucide-react';
+import { CheckCircle, Clock, Eye, RefreshCw, Image as ImageIcon, Truck, Package, MapPin, Phone, User, Banknote, CreditCard, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -29,6 +29,7 @@ interface Order {
   metodo_pago: string;
   puntos_ganados: number;
   comprobante_pago: string | null;
+  monto_pago: number | null;
   user_id: string;
   profiles: {
     full_name: string | null;
@@ -280,8 +281,24 @@ export default function Ordenes() {
                           </div>
                           <div>
                             <p className="text-muted-foreground">Método de pago</p>
-                            <p className="font-medium uppercase">{selectedOrder.metodo_pago}</p>
+                            <div className="flex items-center gap-2 font-medium">
+                              {selectedOrder.metodo_pago === 'yape_plin' && <QrCode className="h-4 w-4 text-primary" />}
+                              {selectedOrder.metodo_pago === 'efectivo' && <Banknote className="h-4 w-4 text-green-600" />}
+                              {selectedOrder.metodo_pago === 'tarjeta' && <CreditCard className="h-4 w-4 text-blue-600" />}
+                              {selectedOrder.metodo_pago === 'yape_plin' ? 'Yape/Plin' : 
+                               selectedOrder.metodo_pago === 'efectivo' ? 'Efectivo' : 
+                               selectedOrder.metodo_pago === 'tarjeta' ? 'Tarjeta (POS)' : selectedOrder.metodo_pago}
+                            </div>
                           </div>
+                          {selectedOrder.metodo_pago === 'efectivo' && selectedOrder.monto_pago && (
+                            <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                              <p className="text-muted-foreground text-xs">Cliente paga con</p>
+                              <p className="font-bold text-lg">S/ {selectedOrder.monto_pago.toFixed(2)}</p>
+                              <p className="text-green-600 font-semibold">
+                                Vuelto: S/ {(selectedOrder.monto_pago - selectedOrder.total).toFixed(2)}
+                              </p>
+                            </div>
+                          )}
                           <div className="col-span-2">
                             <p className="text-muted-foreground flex items-center gap-1">
                               <MapPin className="h-3 w-3" /> Dirección de entrega
