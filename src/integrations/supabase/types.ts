@@ -84,6 +84,7 @@ export type Database = {
           estado: string
           id: string
           metodo_pago: string | null
+          monto_pago: number | null
           puntos_ganados: number
           total: number
           user_id: string
@@ -94,6 +95,7 @@ export type Database = {
           estado?: string
           id?: string
           metodo_pago?: string | null
+          monto_pago?: number | null
           puntos_ganados?: number
           total?: number
           user_id: string
@@ -104,6 +106,7 @@ export type Database = {
           estado?: string
           id?: string
           metodo_pago?: string | null
+          monto_pago?: number | null
           puntos_ganados?: number
           total?: number
           user_id?: string
