@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, CheckCircle, Clock, QrCode } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, QrCode, Upload, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 type OrderStatus = 'resumen' | 'pago' | 'confirmando' | 'confirmado';
@@ -16,6 +16,10 @@ export default function Checkout() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<OrderStatus>('resumen');
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Listen for order confirmation in real-time
   useEffect(() => {
@@ -49,14 +53,50 @@ export default function Checkout() {
     setStatus('pago');
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Solo se permiten imágenes');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('La imagen no debe superar 5MB');
+      return;
+    }
+
+    setReceiptFile(file);
+    const preview = URL.createObjectURL(file);
+    setReceiptPreview(preview);
+  };
+
   const handleConfirmPayment = async () => {
     if (!user) {
       toast.error('Debes iniciar sesión para realizar un pedido');
       return;
     }
 
+    if (!receiptFile) {
+      toast.error('Por favor sube el comprobante de pago');
+      return;
+    }
+
+    setIsUploading(true);
+
     try {
-      // Create order
+      // Upload receipt first
+      const fileExt = receiptFile.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('comprobantes-pago')
+        .upload(fileName, receiptFile);
+
+      if (uploadError) throw uploadError;
+
+      // Create order with receipt reference
       const { data: order, error: orderError } = await supabase
         .from('ordenes')
         .insert({
@@ -64,7 +104,8 @@ export default function Checkout() {
           total: total,
           estado: 'pendiente',
           metodo_pago: 'yape_plin',
-          puntos_ganados: Math.floor(total) // 1 punto por cada sol
+          puntos_ganados: Math.floor(total),
+          comprobante_pago: fileName
         })
         .select()
         .single();
@@ -92,6 +133,8 @@ export default function Checkout() {
     } catch (error: any) {
       console.error('Error creating order:', error);
       toast.error('Error al crear el pedido: ' + error.message);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -176,8 +219,59 @@ export default function Checkout() {
                 <p className="text-center text-2xl font-bold text-primary">S/ {total.toFixed(2)}</p>
               </div>
 
-              <Button className="w-full" size="lg" onClick={handleConfirmPayment}>
-                Ya realicé el pago
+              {/* Receipt upload section */}
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-center">Sube tu comprobante de pago</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  ref={fileInputRef}
+                  className="hidden"
+                />
+                
+                {receiptPreview ? (
+                  <div className="relative">
+                    <img 
+                      src={receiptPreview} 
+                      alt="Comprobante" 
+                      className="w-full max-h-48 object-contain rounded-lg border"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute bottom-2 right-2"
+                    >
+                      Cambiar
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full h-24 border-dashed flex flex-col gap-2"
+                  >
+                    <Upload className="h-6 w-6" />
+                    <span>Subir imagen del comprobante</span>
+                  </Button>
+                )}
+              </div>
+
+              <Button 
+                className="w-full" 
+                size="lg" 
+                onClick={handleConfirmPayment}
+                disabled={!receiptFile || isUploading}
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enviando pedido...
+                  </>
+                ) : (
+                  'Confirmar y enviar pedido'
+                )}
               </Button>
             </CardContent>
           </Card>
