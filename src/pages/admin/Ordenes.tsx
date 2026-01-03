@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { CheckCircle, Clock, Eye, RefreshCw } from 'lucide-react';
+import { CheckCircle, Clock, Eye, RefreshCw, Image as ImageIcon, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -26,6 +26,7 @@ interface Order {
   estado: string;
   metodo_pago: string;
   puntos_ganados: number;
+  comprobante_pago: string | null;
   user_id: string;
   profiles: {
     full_name: string | null;
@@ -38,6 +39,8 @@ export default function Ordenes() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [showReceipt, setShowReceipt] = useState(false);
 
 const fetchOrders = async () => {
     setLoading(true);
@@ -149,6 +152,22 @@ const fetchOrders = async () => {
     }
   };
 
+  const handleViewReceipt = async (comprobantePath: string) => {
+    try {
+      const { data } = await supabase.storage
+        .from('comprobantes-pago')
+        .createSignedUrl(comprobantePath, 300); // 5 min expiry
+
+      if (data?.signedUrl) {
+        setReceiptUrl(data.signedUrl);
+        setShowReceipt(true);
+      }
+    } catch (error) {
+      console.error('Error getting receipt:', error);
+      toast.error('Error al cargar comprobante');
+    }
+  };
+
   const getStatusBadge = (estado: string) => {
     switch (estado) {
       case 'pendiente':
@@ -252,10 +271,29 @@ const fetchOrders = async () => {
                                   <span>Total:</span>
                                   <span>S/ {selectedOrder.total.toFixed(2)}</span>
                                 </div>
+                                {selectedOrder.comprobante_pago && (
+                                  <Button 
+                                    variant="outline" 
+                                    className="w-full mt-4"
+                                    onClick={() => handleViewReceipt(selectedOrder.comprobante_pago!)}
+                                  >
+                                    <ImageIcon className="h-4 w-4 mr-2" />
+                                    Ver Comprobante de Pago
+                                  </Button>
+                                )}
                               </div>
                             )}
                           </DialogContent>
                         </Dialog>
+                        {order.comprobante_pago && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleViewReceipt(order.comprobante_pago!)}
+                          >
+                            <ImageIcon className="h-4 w-4" />
+                          </Button>
+                        )}
                         {order.estado === 'pendiente' && (
                           <Button size="sm" onClick={() => handleConfirmOrder(order.id)}>
                             <CheckCircle className="h-4 w-4 mr-1" /> Confirmar
@@ -270,6 +308,22 @@ const fetchOrders = async () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Receipt viewer dialog */}
+      <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Comprobante de Pago</DialogTitle>
+          </DialogHeader>
+          {receiptUrl && (
+            <img 
+              src={receiptUrl} 
+              alt="Comprobante de pago" 
+              className="w-full max-h-[70vh] object-contain rounded-lg"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

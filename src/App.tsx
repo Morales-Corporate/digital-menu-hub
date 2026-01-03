@@ -11,6 +11,7 @@ import Auth from "@/pages/Auth";
 import MiCuenta from "@/pages/MiCuenta";
 import MisOrdenes from "@/pages/MisOrdenes";
 import Checkout from "@/pages/Checkout";
+import CompletarPerfil from "@/pages/CompletarPerfil";
 import AdminIndex from "@/pages/admin/AdminIndex";
 import Categorias from "@/pages/admin/Categorias";
 import Productos from "@/pages/admin/Productos";
@@ -46,6 +47,11 @@ const App = () => (
             <Route path="/checkout" element={
               <ProtectedRoute>
                 <Checkout />
+              </ProtectedRoute>
+            } />
+            <Route path="/completar-perfil" element={
+              <ProtectedRoute>
+                <CompletarPerfil />
               </ProtectedRoute>
             } />
             
