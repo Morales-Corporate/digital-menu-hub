@@ -85,6 +85,7 @@ export type Database = {
           id: string
           metodo_pago: string | null
           monto_pago: number | null
+          motivo_cancelacion: string | null
           puntos_ganados: number
           total: number
           user_id: string
@@ -96,6 +97,7 @@ export type Database = {
           id?: string
           metodo_pago?: string | null
           monto_pago?: number | null
+          motivo_cancelacion?: string | null
           puntos_ganados?: number
           total?: number
           user_id: string
@@ -107,6 +109,7 @@ export type Database = {
           id?: string
           metodo_pago?: string | null
           monto_pago?: number | null
+          motivo_cancelacion?: string | null
           puntos_ganados?: number
           total?: number
           user_id?: string
