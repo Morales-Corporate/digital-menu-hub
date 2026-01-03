@@ -19,9 +19,10 @@ interface AdminLayoutProps {
 }
 
 const navItems = [
-  { href: '/admin/categorias', label: 'Categorías', icon: LayoutGrid },
-  { href: '/admin/productos', label: 'Productos', icon: UtensilsCrossed },
+  { href: '/admin', label: 'Dashboard', icon: LayoutGrid },
   { href: '/admin/ordenes', label: 'Pedidos', icon: ClipboardList },
+  { href: '/admin/categorias', label: 'Categorías', icon: UtensilsCrossed },
+  { href: '/admin/productos', label: 'Productos', icon: UtensilsCrossed },
   { href: '/', label: 'Ver Menú', icon: Eye, external: true },
 ];
 
