@@ -240,21 +240,6 @@ export default function MenuPublico() {
                 </Tooltip>
               </TooltipProvider>
             )}
-            {user && ultimaOrden && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="sm" onClick={handleRepeatOrder}>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Repetir
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Repetir mi última orden</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
             {user && <CartSheet />}
             {user ? (
               <UserMenu />

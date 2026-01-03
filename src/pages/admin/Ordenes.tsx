@@ -293,19 +293,6 @@ export default function Ordenes() {
                               </p>
                             )}
                           </div>
-                          {selectedOrder.profiles?.latitud && selectedOrder.profiles?.longitud && (
-                            <div className="col-span-2">
-                              <a 
-                                href={`https://www.google.com/maps?q=${selectedOrder.profiles.latitud},${selectedOrder.profiles.longitud}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 text-primary hover:underline"
-                              >
-                                <MapPin className="h-4 w-4" />
-                                Ver ubicación en Google Maps
-                              </a>
-                            </div>
-                          )}
                           <div className="col-span-2">
                             <p className="text-muted-foreground">Estado</p>
                             {getStatusBadge(selectedOrder.estado)}
@@ -326,7 +313,7 @@ export default function Ordenes() {
                           <span>Total:</span>
                           <span>S/ {selectedOrder.total.toFixed(2)}</span>
                         </div>
-                        {selectedOrder.comprobante_pago && selectedOrder.estado === 'pendiente' && (
+                        {selectedOrder.comprobante_pago && (selectedOrder.estado === 'pendiente' || selectedOrder.estado === 'confirmado') && (
                           <Button 
                             variant="outline" 
                             className="w-full mt-4"
@@ -340,7 +327,7 @@ export default function Ordenes() {
                     )}
                   </DialogContent>
                 </Dialog>
-                {order.comprobante_pago && order.estado === 'pendiente' && (
+                {order.comprobante_pago && (order.estado === 'pendiente' || order.estado === 'confirmado') && (
                   <Button 
                     variant="outline" 
                     size="sm" 
