@@ -3,13 +3,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, UtensilsCrossed, LogIn, Plus, RefreshCw, User } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, UtensilsCrossed, LogIn, Plus, RefreshCw, Star, Gift, Cake } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
 import { CartSheet } from '@/components/CartSheet';
 import UserMenu from '@/components/UserMenu';
 import { toast } from 'sonner';
+import { differenceInDays, parseISO, setYear, format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import {
   Tooltip,
   TooltipContent,
@@ -28,14 +31,14 @@ export default function MenuPublico() {
   const { user } = useAuth();
   const { addItem, addItems } = useCart();
 
-  // Obtener perfil del usuario para el saludo
+  // Obtener perfil del usuario para el saludo y cumpleaños
   const { data: profile } = useQuery({
     queryKey: ['user-profile', user?.id],
     queryFn: async () => {
       if (!user) return null;
       const { data, error } = await supabase
         .from('profiles')
-        .select('full_name')
+        .select('full_name, fecha_nacimiento')
         .eq('id', user.id)
         .maybeSingle();
       if (error) throw error;
@@ -44,7 +47,52 @@ export default function MenuPublico() {
     enabled: !!user,
   });
 
-  // Obtener última orden para repetir
+  // Obtener puntos del usuario
+  const { data: puntosData } = useQuery({
+    queryKey: ['user-points', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('puntos_usuario')
+        .select('puntos_totales')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Obtener última orden entregada para mostrar
+  const { data: ultimaOrdenEntregada } = useQuery({
+    queryKey: ['last-delivered-order', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('ordenes')
+        .select(`
+          id,
+          total,
+          created_at,
+          puntos_ganados,
+          orden_items (
+            cantidad,
+            precio_unitario,
+            productos (id, nombre, precio, imagen_url)
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('estado', 'entregado')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Obtener última orden para repetir (cualquier estado)
   const { data: ultimaOrden } = useQuery({
     queryKey: ['last-order', user?.id],
     queryFn: async () => {
@@ -90,6 +138,35 @@ export default function MenuPublico() {
   };
 
   const firstName = profile?.full_name?.split(' ')[0] || null;
+  const puntos = puntosData?.puntos_totales || 0;
+  
+  // Calcular días para el cumpleaños
+  const getDaysUntilBirthday = () => {
+    if (!profile?.fecha_nacimiento) return null;
+    const today = new Date();
+    const birthday = parseISO(profile.fecha_nacimiento);
+    const thisYearBirthday = setYear(birthday, today.getFullYear());
+    
+    let daysUntil = differenceInDays(thisYearBirthday, today);
+    if (daysUntil < 0) {
+      // El cumpleaños ya pasó este año, calcular para el próximo año
+      const nextYearBirthday = setYear(birthday, today.getFullYear() + 1);
+      daysUntil = differenceInDays(nextYearBirthday, today);
+    }
+    return daysUntil;
+  };
+
+  const daysUntilBirthday = getDaysUntilBirthday();
+  
+  // Calcular puntos para próximo nivel/descuento
+  const getPointsInfo = () => {
+    if (puntos >= 500) return { level: 'Oro', next: null, remaining: 0 };
+    if (puntos >= 200) return { level: 'Plata', next: 'Oro', remaining: 500 - puntos };
+    if (puntos >= 50) return { level: 'Bronce', next: 'Plata', remaining: 200 - puntos };
+    return { level: 'Nuevo', next: 'Bronce', remaining: 50 - puntos };
+  };
+  
+  const pointsInfo = getPointsInfo();
 
   const { data: categorias, isLoading: loadingCategorias } = useQuery({
     queryKey: ['menu-categorias'],
@@ -145,6 +222,24 @@ export default function MenuPublico() {
             <span className="font-display text-xl font-semibold">Nuestro Menú</span>
           </div>
           <div className="flex items-center gap-2">
+            {user && puntos > 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="secondary" className="gap-1 cursor-pointer">
+                      <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
+                      {puntos} pts
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Nivel {pointsInfo.level}</p>
+                    {pointsInfo.next && (
+                      <p className="text-xs">Faltan {pointsInfo.remaining} pts para {pointsInfo.next}</p>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             {user && ultimaOrden && (
               <TooltipProvider>
                 <Tooltip>
@@ -185,14 +280,86 @@ export default function MenuPublico() {
               <>Bienvenido a Nuestro Menú</>
             )}
           </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto mb-6">
             {firstName 
               ? 'Descubre nuestra selección de platos preparados con ingredientes frescos y recetas tradicionales.'
               : 'Descubre nuestra selección de platos preparados con ingredientes frescos y recetas tradicionales.'
             }
           </p>
+          
+          {/* Badges informativos para usuarios logueados */}
+          {user && (
+            <div className="flex flex-wrap justify-center gap-3">
+              {daysUntilBirthday !== null && daysUntilBirthday <= 30 && (
+                <Badge variant="outline" className="gap-2 py-2 px-4 bg-pink-50 border-pink-200 text-pink-700">
+                  <Cake className="h-4 w-4" />
+                  {daysUntilBirthday === 0 
+                    ? '¡Feliz cumpleaños! 🎉 Descuento especial hoy'
+                    : `Faltan ${daysUntilBirthday} días para tu cumpleaños`
+                  }
+                </Badge>
+              )}
+              {pointsInfo.next && (
+                <Badge variant="outline" className="gap-2 py-2 px-4 bg-amber-50 border-amber-200 text-amber-700">
+                  <Gift className="h-4 w-4" />
+                  Faltan {pointsInfo.remaining} pts para nivel {pointsInfo.next}
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
       </section>
+
+      {/* Último pedido entregado */}
+      {user && ultimaOrdenEntregada && (
+        <section className="container py-6">
+          <Card className="bg-gradient-to-r from-primary/5 to-secondary/30 border-primary/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Gift className="h-4 w-4 text-primary" />
+                  Tu último pedido entregado
+                </h3>
+                <span className="text-sm text-muted-foreground">
+                  {format(new Date(ultimaOrdenEntregada.created_at!), "d 'de' MMMM", { locale: es })}
+                </span>
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {ultimaOrdenEntregada.orden_items.slice(0, 5).map((item: any, index: number) => (
+                  <div 
+                    key={index} 
+                    className="flex-shrink-0 w-24 text-center"
+                  >
+                    {item.productos?.imagen_url ? (
+                      <img 
+                        src={item.productos.imagen_url} 
+                        alt={item.productos?.nombre}
+                        className="w-20 h-20 object-cover rounded-lg mx-auto mb-1"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 bg-muted rounded-lg mx-auto mb-1 flex items-center justify-center">
+                        <UtensilsCrossed className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    )}
+                    <p className="text-xs font-medium truncate">{item.productos?.nombre}</p>
+                    <p className="text-xs text-muted-foreground">x{item.cantidad}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Total: </span>
+                  <span className="font-semibold">S/ {ultimaOrdenEntregada.total.toFixed(2)}</span>
+                  <span className="text-xs text-primary ml-2">+{ultimaOrdenEntregada.puntos_ganados} pts</span>
+                </div>
+                <Button size="sm" variant="outline" onClick={handleRepeatOrder}>
+                  <RefreshCw className="h-3 w-3 mr-1" /> Repetir
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       {/* Menu Content */}
       <main className="container py-12">

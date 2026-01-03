@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, Clock, Eye, RefreshCw, Image as ImageIcon, Truck, Package } from 'lucide-react';
+import { CheckCircle, Clock, Eye, RefreshCw, Image as ImageIcon, Truck, Package, MapPin, Phone, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -35,6 +35,8 @@ interface Order {
     email: string | null;
     telefono: string | null;
     direccion: string | null;
+    latitud: number | null;
+    longitud: number | null;
   } | null;
   orden_items: OrderItem[];
 }
@@ -78,7 +80,7 @@ export default function Ordenes() {
       const userIds = [...new Set(ordersData?.map(o => o.user_id) || [])];
       const { data: profilesData } = await supabase
         .from('profiles')
-        .select('id, full_name, email, telefono, direccion')
+        .select('id, full_name, email, telefono, direccion, latitud, longitud')
         .in('id', userIds);
       
       const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
@@ -262,23 +264,43 @@ export default function Ordenes() {
                     {selectedOrder && (
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <p className="text-muted-foreground">Cliente</p>
-                            <p className="font-medium">{selectedOrder.profiles?.full_name || 'Sin nombre'}</p>
+                          <div className="col-span-2 bg-secondary/50 p-3 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                              <User className="h-4 w-4 text-primary" />
+                              <span className="font-medium">Datos del Cliente</span>
+                            </div>
+                            <p className="font-semibold text-lg">{selectedOrder.profiles?.full_name || 'Sin nombre'}</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground">Teléfono</p>
+                            <p className="text-muted-foreground flex items-center gap-1">
+                              <Phone className="h-3 w-3" /> Teléfono
+                            </p>
                             <p className="font-medium">{selectedOrder.profiles?.telefono || '-'}</p>
-                          </div>
-                          <div className="col-span-2">
-                            <p className="text-muted-foreground">Dirección</p>
-                            <p className="font-medium">{selectedOrder.profiles?.direccion || 'Sin dirección'}</p>
                           </div>
                           <div>
                             <p className="text-muted-foreground">Método de pago</p>
                             <p className="font-medium uppercase">{selectedOrder.metodo_pago}</p>
                           </div>
-                          <div>
+                          <div className="col-span-2">
+                            <p className="text-muted-foreground flex items-center gap-1">
+                              <MapPin className="h-3 w-3" /> Dirección de entrega
+                            </p>
+                            <p className="font-medium">{selectedOrder.profiles?.direccion || 'Sin dirección'}</p>
+                          </div>
+                          {selectedOrder.profiles?.latitud && selectedOrder.profiles?.longitud && (
+                            <div className="col-span-2">
+                              <a 
+                                href={`https://www.google.com/maps?q=${selectedOrder.profiles.latitud},${selectedOrder.profiles.longitud}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 text-primary hover:underline"
+                              >
+                                <MapPin className="h-4 w-4" />
+                                Ver ubicación en Google Maps
+                              </a>
+                            </div>
+                          )}
+                          <div className="col-span-2">
                             <p className="text-muted-foreground">Estado</p>
                             {getStatusBadge(selectedOrder.estado)}
                           </div>
