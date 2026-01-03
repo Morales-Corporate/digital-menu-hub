@@ -71,7 +71,7 @@ export default function Ordenes() {
             productos (nombre)
           )
         `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (ordersError) throw ordersError;
       
