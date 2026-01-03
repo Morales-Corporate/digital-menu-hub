@@ -12,6 +12,7 @@ import MiCuenta from "@/pages/MiCuenta";
 import MisOrdenes from "@/pages/MisOrdenes";
 import Checkout from "@/pages/Checkout";
 import CompletarPerfil from "@/pages/CompletarPerfil";
+import EditarPerfil from "@/pages/EditarPerfil";
 import AdminIndex from "@/pages/admin/AdminIndex";
 import Categorias from "@/pages/admin/Categorias";
 import Productos from "@/pages/admin/Productos";
@@ -52,6 +53,11 @@ const App = () => (
             <Route path="/completar-perfil" element={
               <ProtectedRoute>
                 <CompletarPerfil />
+              </ProtectedRoute>
+            } />
+            <Route path="/editar-perfil" element={
+              <ProtectedRoute>
+                <EditarPerfil />
               </ProtectedRoute>
             } />
             

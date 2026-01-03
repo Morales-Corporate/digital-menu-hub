@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Settings, Gift, History } from 'lucide-react';
+import { User, LogOut, Settings, Gift, History, Edit } from 'lucide-react';
 
 export default function UserMenu() {
   const { user, isAdmin, signOut } = useAuth();
@@ -57,6 +57,12 @@ export default function UserMenu() {
               <Link to="/mis-ordenes" className="cursor-pointer">
                 <History className="mr-2 h-4 w-4" />
                 Mis Órdenes
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/editar-perfil" className="cursor-pointer">
+                <Edit className="mr-2 h-4 w-4" />
+                Editar Perfil
               </Link>
             </DropdownMenuItem>
           </>
