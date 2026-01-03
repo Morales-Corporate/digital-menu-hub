@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, CheckCircle, Clock, QrCode, Upload, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, QrCode, Upload, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 type OrderStatus = 'resumen' | 'pago' | 'confirmando' | 'confirmado';
@@ -19,7 +19,34 @@ export default function Checkout() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isCheckingProfile, setIsCheckingProfile] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Check if user profile is complete before allowing checkout
+  useEffect(() => {
+    const checkProfile = async () => {
+      if (!user) {
+        setIsCheckingProfile(false);
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, telefono, direccion, dni, fecha_nacimiento')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.full_name || !profile?.telefono || !profile?.direccion || !profile?.dni) {
+        toast.error('Por favor completa tu perfil antes de realizar un pedido');
+        navigate('/completar-perfil');
+        return;
+      }
+
+      setIsCheckingProfile(false);
+    };
+
+    checkProfile();
+  }, [user, navigate]);
 
   // Listen for order confirmation in real-time
   useEffect(() => {
@@ -128,6 +155,7 @@ export default function Checkout() {
 
       setOrderId(order.id);
       setStatus('confirmando');
+      clearCart(); // Clear cart immediately after order is created
       toast.info('Pedido enviado. Esperando confirmación del restaurante...');
 
     } catch (error: any) {
@@ -142,6 +170,14 @@ export default function Checkout() {
     clearCart();
     navigate('/mi-cuenta');
   };
+
+  if (isCheckingProfile) {
+    return (
+      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (items.length === 0 && status === 'resumen') {
     return (
