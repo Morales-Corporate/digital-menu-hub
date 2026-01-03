@@ -213,7 +213,14 @@ export default function Auth() {
           <div className="mt-6 text-center">
             <button
               type="button"
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => {
+                if (isLogin) {
+                  loginForm.reset();
+                } else {
+                  signUpForm.reset();
+                }
+                setIsLogin(!isLogin);
+              }}
               className="text-sm text-muted-foreground hover:text-primary transition-colors"
             >
               {isLogin 
