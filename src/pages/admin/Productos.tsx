@@ -415,7 +415,7 @@ export default function Productos() {
                   <div className="flex justify-between items-start gap-2 mb-2">
                     <h3 className="font-medium line-clamp-1">{producto.nombre}</h3>
                     <span className="font-semibold text-primary whitespace-nowrap">
-                      ${Number(producto.precio).toFixed(2)}
+                      S/ {Number(producto.precio).toFixed(2)}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
