@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, UtensilsCrossed, LogIn, Plus, RefreshCw, Star, Gift, Cake } from 'lucide-react';
+import { Loader2, UtensilsCrossed, LogIn, Plus, RefreshCw, Star, Gift, Cake, Clock, CheckCircle, Package } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
@@ -19,6 +19,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+} from '@/components/ui/carousel';
 
 type Producto = Tables<'productos'>;
 type Categoria = Tables<'categorias'>;
@@ -26,6 +33,26 @@ type Categoria = Tables<'categorias'>;
 interface ProductoConCategoria extends Producto {
   categoria: Categoria | null;
 }
+
+const ESTADOS_PENDIENTES = ['pendiente', 'confirmado', 'en_preparacion', 'en_camino'];
+const ESTADO_ENTREGADO = 'entregado';
+
+const getEstadoConfig = (estado: string) => {
+  switch (estado) {
+    case 'pendiente':
+      return { label: 'Pendiente', color: 'bg-yellow-500', icon: Clock };
+    case 'confirmado':
+      return { label: 'Confirmado', color: 'bg-blue-500', icon: CheckCircle };
+    case 'en_preparacion':
+      return { label: 'En Preparación', color: 'bg-orange-500', icon: Package };
+    case 'en_camino':
+      return { label: 'En Camino', color: 'bg-purple-500', icon: Package };
+    case 'entregado':
+      return { label: 'Entregado', color: 'bg-green-500', icon: CheckCircle };
+    default:
+      return { label: estado, color: 'bg-muted', icon: Clock };
+  }
+};
 
 export default function MenuPublico() {
   const { user } = useAuth();
@@ -63,16 +90,17 @@ export default function MenuPublico() {
     enabled: !!user,
   });
 
-  // Obtener última orden entregada para mostrar
-  const { data: ultimaOrdenEntregada } = useQuery({
-    queryKey: ['last-delivered-order', user?.id],
+  // Obtener todas las órdenes del usuario
+  const { data: ordenes } = useQuery({
+    queryKey: ['user-all-orders', user?.id],
     queryFn: async () => {
-      if (!user) return null;
+      if (!user) return [];
       const { data, error } = await supabase
         .from('ordenes')
         .select(`
           id,
           total,
+          estado,
           created_at,
           puntos_ganados,
           orden_items (
@@ -82,15 +110,23 @@ export default function MenuPublico() {
           )
         `)
         .eq('user_id', user.id)
-        .eq('estado', 'entregado')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
     },
     enabled: !!user,
   });
+
+  // Separar órdenes pendientes y entregadas
+  const ordenesPendientes = ordenes?.filter((o: any) => 
+    ESTADOS_PENDIENTES.includes(o.estado)
+  ) || [];
+  
+  const ordenesEntregadas = ordenes?.filter((o: any) => 
+    o.estado === ESTADO_ENTREGADO
+  ) || [];
+
+  const ultimaOrdenEntregada = ordenesEntregadas[0];
 
   // Obtener última orden para repetir (cualquier estado)
   const { data: ultimaOrden } = useQuery({
@@ -211,6 +247,56 @@ export default function MenuPublico() {
 
   const productosWithoutCategoria = productos?.filter(p => !p.categoria_id) ?? [];
 
+  const renderOrdenPendiente = (orden: any) => {
+    const estadoConfig = getEstadoConfig(orden.estado);
+    const IconComponent = estadoConfig.icon;
+
+    return (
+      <Card className="bg-gradient-to-r from-primary/5 to-secondary/30 border-primary/30">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <Badge className={`${estadoConfig.color} text-white flex items-center gap-1`}>
+              <IconComponent className="h-3 w-3" />
+              {estadoConfig.label}
+            </Badge>
+            <span className="text-sm text-muted-foreground">
+              {format(new Date(orden.created_at), "d 'de' MMMM, HH:mm", { locale: es })}
+            </span>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {orden.orden_items.slice(0, 5).map((item: any, index: number) => (
+              <div 
+                key={index} 
+                className="flex-shrink-0 w-24 text-center"
+              >
+                {item.productos?.imagen_url ? (
+                  <img 
+                    src={item.productos.imagen_url} 
+                    alt={item.productos?.nombre}
+                    className="w-20 h-20 object-cover rounded-lg mx-auto mb-1"
+                  />
+                ) : (
+                  <div className="w-20 h-20 bg-muted rounded-lg mx-auto mb-1 flex items-center justify-center">
+                    <UtensilsCrossed className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                )}
+                <p className="text-xs font-medium truncate">{item.productos?.nombre}</p>
+                <p className="text-xs text-muted-foreground">x{item.cantidad}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between mt-3 pt-3 border-t">
+            <div className="text-sm">
+              <span className="text-muted-foreground">Total: </span>
+              <span className="font-semibold">S/ {Number(orden.total).toFixed(2)}</span>
+              <span className="text-xs text-primary ml-2">+{orden.puntos_ganados} pts</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -296,51 +382,77 @@ export default function MenuPublico() {
         </div>
       </section>
 
-      {/* Último pedido entregado */}
-      {user && ultimaOrdenEntregada && (
+      {/* Órdenes Pendientes (Carrusel) o Última Orden Entregada */}
+      {user && (ordenesPendientes.length > 0 || ultimaOrdenEntregada) && (
         <section className="container py-6">
-          <Card className="bg-gradient-to-r from-primary/5 to-secondary/30 border-primary/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Gift className="h-4 w-4 text-primary" />
-                  Tu último pedido entregado
-                </h3>
-                <span className="text-sm text-muted-foreground">
-                  {format(new Date(ultimaOrdenEntregada.created_at!), "d 'de' MMMM", { locale: es })}
-                </span>
-              </div>
-              <div className="flex gap-3 overflow-x-auto pb-2">
-                {ultimaOrdenEntregada.orden_items.slice(0, 5).map((item: any, index: number) => (
-                  <div 
-                    key={index} 
-                    className="flex-shrink-0 w-24 text-center"
-                  >
-                    {item.productos?.imagen_url ? (
-                      <img 
-                        src={item.productos.imagen_url} 
-                        alt={item.productos?.nombre}
-                        className="w-20 h-20 object-cover rounded-lg mx-auto mb-1"
-                      />
-                    ) : (
-                      <div className="w-20 h-20 bg-muted rounded-lg mx-auto mb-1 flex items-center justify-center">
-                        <UtensilsCrossed className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                    )}
-                    <p className="text-xs font-medium truncate">{item.productos?.nombre}</p>
-                    <p className="text-xs text-muted-foreground">x{item.cantidad}</p>
+          {ordenesPendientes.length > 0 ? (
+            <div>
+              <h3 className="font-semibold flex items-center gap-2 mb-3">
+                <Clock className="h-4 w-4 text-primary" />
+                {ordenesPendientes.length === 1 ? 'Tu pedido en curso' : 'Tus pedidos en curso'}
+              </h3>
+              {ordenesPendientes.length === 1 ? (
+                renderOrdenPendiente(ordenesPendientes[0])
+              ) : (
+                <Carousel className="w-full">
+                  <CarouselContent>
+                    {ordenesPendientes.map((orden: any) => (
+                      <CarouselItem key={orden.id}>
+                        {renderOrdenPendiente(orden)}
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  <div className="flex justify-center gap-2 mt-4">
+                    <CarouselPrevious className="static translate-y-0" />
+                    <CarouselNext className="static translate-y-0" />
                   </div>
-                ))}
-              </div>
-              <div className="flex items-center justify-between mt-3 pt-3 border-t">
-                <div className="text-sm">
-                  <span className="text-muted-foreground">Total: </span>
-                  <span className="font-semibold">S/ {ultimaOrdenEntregada.total.toFixed(2)}</span>
-                  <span className="text-xs text-primary ml-2">+{ultimaOrdenEntregada.puntos_ganados} pts</span>
+                </Carousel>
+              )}
+            </div>
+          ) : ultimaOrdenEntregada ? (
+            <Card className="bg-gradient-to-r from-primary/5 to-secondary/30 border-primary/20">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Gift className="h-4 w-4 text-primary" />
+                    Tu último pedido entregado
+                  </h3>
+                  <span className="text-sm text-muted-foreground">
+                    {format(new Date(ultimaOrdenEntregada.created_at!), "d 'de' MMMM", { locale: es })}
+                  </span>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {ultimaOrdenEntregada.orden_items.slice(0, 5).map((item: any, index: number) => (
+                    <div 
+                      key={index} 
+                      className="flex-shrink-0 w-24 text-center"
+                    >
+                      {item.productos?.imagen_url ? (
+                        <img 
+                          src={item.productos.imagen_url} 
+                          alt={item.productos?.nombre}
+                          className="w-20 h-20 object-cover rounded-lg mx-auto mb-1"
+                        />
+                      ) : (
+                        <div className="w-20 h-20 bg-muted rounded-lg mx-auto mb-1 flex items-center justify-center">
+                          <UtensilsCrossed className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                      )}
+                      <p className="text-xs font-medium truncate">{item.productos?.nombre}</p>
+                      <p className="text-xs text-muted-foreground">x{item.cantidad}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Total: </span>
+                    <span className="font-semibold">S/ {ultimaOrdenEntregada.total.toFixed(2)}</span>
+                    <span className="text-xs text-primary ml-2">+{ultimaOrdenEntregada.puntos_ganados} pts</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
         </section>
       )}
 
