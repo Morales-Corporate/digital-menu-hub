@@ -14,7 +14,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Loader2, ImageIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, ImageIcon, Package } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 
 type Producto = Tables<'productos'>;
@@ -27,6 +27,7 @@ const productoSchema = z.object({
   imagen_url: z.string().url('URL inválida').optional().or(z.literal('')),
   categoria_id: z.string().optional(),
   disponible: z.boolean(),
+  stock: z.number().min(0, 'El stock debe ser positivo').nullable(),
 });
 
 type ProductoFormData = z.infer<typeof productoSchema>;
@@ -44,7 +45,8 @@ export default function Productos() {
       precio: 0, 
       imagen_url: '', 
       categoria_id: undefined,
-      disponible: true 
+      disponible: true,
+      stock: null
     },
   });
 
@@ -81,6 +83,7 @@ export default function Productos() {
         imagen_url: data.imagen_url || null,
         descripcion: data.descripcion || null,
         categoria_id: data.categoria_id || null,
+        stock: data.stock,
       };
       const { error } = await supabase.from('productos').insert([insertData]);
       if (error) throw error;
@@ -96,10 +99,13 @@ export default function Productos() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: ProductoFormData }) => {
       const updateData = {
-        ...data,
+        nombre: data.nombre,
+        precio: data.precio,
+        disponible: data.disponible,
         imagen_url: data.imagen_url || null,
         descripcion: data.descripcion || null,
         categoria_id: data.categoria_id || null,
+        stock: data.stock,
       };
       const { error } = await supabase.from('productos').update(updateData).eq('id', id);
       if (error) throw error;
@@ -132,7 +138,8 @@ export default function Productos() {
       precio: 0, 
       imagen_url: '', 
       categoria_id: undefined,
-      disponible: true 
+      disponible: true,
+      stock: null
     });
     setDialogOpen(true);
   };
@@ -146,6 +153,7 @@ export default function Productos() {
       imagen_url: producto.imagen_url ?? '',
       categoria_id: producto.categoria_id ?? undefined,
       disponible: producto.disponible ?? true,
+      stock: producto.stock ?? null,
     });
     setDialogOpen(true);
   };
@@ -289,6 +297,34 @@ export default function Productos() {
                   />
                   <FormField
                     control={form.control}
+                    name="stock"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Package className="h-4 w-4" />
+                          Stock disponible
+                        </FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number"
+                            min="0"
+                            placeholder="Vacío = ilimitado"
+                            value={field.value ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              field.onChange(val === '' ? null : parseInt(val, 10));
+                            }}
+                          />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground">
+                          Deja vacío para stock ilimitado. 0 = agotado.
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
                     name="disponible"
                     render={({ field }) => (
                       <FormItem className="flex items-center justify-between rounded-lg border p-4">
@@ -356,6 +392,21 @@ export default function Productos() {
                     <div className="absolute inset-0 bg-foreground/60 flex items-center justify-center">
                       <span className="text-background font-medium px-3 py-1 rounded-full bg-destructive text-sm">
                         No disponible
+                      </span>
+                    </div>
+                  )}
+                  {producto.disponible && producto.stock === 0 && (
+                    <div className="absolute inset-0 bg-foreground/60 flex items-center justify-center">
+                      <span className="text-background font-medium px-3 py-1 rounded-full bg-orange-500 text-sm">
+                        Agotado
+                      </span>
+                    </div>
+                  )}
+                  {producto.stock !== null && producto.stock > 0 && (
+                    <div className="absolute top-2 right-2">
+                      <span className="bg-background/90 text-foreground font-medium px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                        <Package className="h-3 w-3" />
+                        {producto.stock}
                       </span>
                     </div>
                   )}
