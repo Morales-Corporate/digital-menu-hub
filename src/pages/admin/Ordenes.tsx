@@ -148,6 +148,40 @@ export default function Ordenes() {
 
   const handleUpdateStatus = async (orderId: string, newStatus: OrderState) => {
     try {
+      const order = orders.find(o => o.id === orderId);
+      
+      // If confirming, decrement stock for each product
+      if (newStatus === 'confirmado' && order) {
+        for (const item of order.orden_items) {
+          if (item.productos) {
+            // Get product ID from the order item - need to fetch it
+            const { data: orderItemData } = await supabase
+              .from('orden_items')
+              .select('producto_id')
+              .eq('id', item.id)
+              .single();
+
+            if (orderItemData?.producto_id) {
+              // Get current stock
+              const { data: producto } = await supabase
+                .from('productos')
+                .select('stock')
+                .eq('id', orderItemData.producto_id)
+                .single();
+
+              // Only decrement if stock is not null (null = unlimited)
+              if (producto?.stock !== null) {
+                const newStock = Math.max(0, producto.stock - item.cantidad);
+                await supabase
+                  .from('productos')
+                  .update({ stock: newStock })
+                  .eq('id', orderItemData.producto_id);
+              }
+            }
+          }
+        }
+      }
+
       const { error } = await supabase
         .from('ordenes')
         .update({ estado: newStatus })
@@ -156,30 +190,27 @@ export default function Ordenes() {
       if (error) throw error;
 
       // If confirming, update points for the user
-      if (newStatus === 'confirmado') {
-        const order = orders.find(o => o.id === orderId);
-        if (order) {
-          const { data: existingPoints } = await supabase
-            .from('puntos_usuario')
-            .select('*')
-            .eq('user_id', order.user_id)
-            .maybeSingle();
+      if (newStatus === 'confirmado' && order) {
+        const { data: existingPoints } = await supabase
+          .from('puntos_usuario')
+          .select('*')
+          .eq('user_id', order.user_id)
+          .maybeSingle();
 
-          if (existingPoints) {
-            await supabase
-              .from('puntos_usuario')
-              .update({ 
-                puntos_totales: existingPoints.puntos_totales + order.puntos_ganados 
-              })
-              .eq('user_id', order.user_id);
-          } else {
-            await supabase
-              .from('puntos_usuario')
-              .insert({
-                user_id: order.user_id,
-                puntos_totales: order.puntos_ganados
-              });
-          }
+        if (existingPoints) {
+          await supabase
+            .from('puntos_usuario')
+            .update({ 
+              puntos_totales: existingPoints.puntos_totales + order.puntos_ganados 
+            })
+            .eq('user_id', order.user_id);
+        } else {
+          await supabase
+            .from('puntos_usuario')
+            .insert({
+              user_id: order.user_id,
+              puntos_totales: order.puntos_ganados
+            });
         }
       }
 

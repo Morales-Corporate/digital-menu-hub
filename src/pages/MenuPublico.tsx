@@ -187,6 +187,7 @@ export default function MenuPublico() {
         .from('productos')
         .select('*')
         .eq('disponible', true)
+        .or('stock.is.null,stock.gt.0')
         .order('nombre', { ascending: true });
       if (error) throw error;
       return data as Producto[];
