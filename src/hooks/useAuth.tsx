@@ -90,12 +90,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (error) {
-      // Session may already be invalidated from another tab - that's fine
-      console.log('Session already invalidated');
-    }
+    // Use local scope to guarantee logout even if the server session is already gone (multi-tab)
+    await supabase.auth.signOut({ scope: 'local' });
+
     // Always clear local state regardless of server response
     setSession(null);
     setUser(null);
