@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, UtensilsCrossed, LogIn, Plus, RefreshCw, Star, Gift, Cake, Clock, CheckCircle, Package } from 'lucide-react';
+import { Loader2, UtensilsCrossed, LogIn, Plus, RefreshCw, Star, Gift, Cake, Clock, CheckCircle, Package, MessageCircle } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
@@ -247,18 +247,38 @@ export default function MenuPublico() {
 
   const productosWithoutCategoria = productos?.filter(p => !p.categoria_id) ?? [];
 
+  const WHATSAPP_NUMBER = '51999999999'; // Número de WhatsApp del negocio
+  
+  const getOrderNumber = (orderId: string) => {
+    // Obtener los últimos 6 caracteres del UUID como número de pedido
+    return orderId.slice(-6).toUpperCase();
+  };
+
+  const handleWhatsAppContact = (orden: any) => {
+    const orderNumber = getOrderNumber(orden.id);
+    const message = `Hola, tengo una consulta sobre mi pedido #${orderNumber}`;
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
   const renderOrdenPendiente = (orden: any) => {
     const estadoConfig = getEstadoConfig(orden.estado);
     const IconComponent = estadoConfig.icon;
+    const orderNumber = getOrderNumber(orden.id);
 
     return (
       <Card className="bg-gradient-to-r from-primary/5 to-secondary/30 border-primary/30">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <Badge className={`${estadoConfig.color} text-white flex items-center gap-1`}>
-              <IconComponent className="h-3 w-3" />
-              {estadoConfig.label}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge className={`${estadoConfig.color} text-white flex items-center gap-1`}>
+                <IconComponent className="h-3 w-3" />
+                {estadoConfig.label}
+              </Badge>
+              <span className="text-sm font-medium text-foreground">
+                Pedido #{orderNumber}
+              </span>
+            </div>
             <span className="text-sm text-muted-foreground">
               {format(new Date(orden.created_at), "d 'de' MMMM, HH:mm", { locale: es })}
             </span>
@@ -291,6 +311,15 @@ export default function MenuPublico() {
               <span className="font-semibold">S/ {Number(orden.total).toFixed(2)}</span>
               <span className="text-xs text-primary ml-2">+{orden.puntos_ganados} pts</span>
             </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-1 text-green-600 border-green-300 hover:bg-green-50"
+              onClick={() => handleWhatsAppContact(orden)}
+            >
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp
+            </Button>
           </div>
         </CardContent>
       </Card>
