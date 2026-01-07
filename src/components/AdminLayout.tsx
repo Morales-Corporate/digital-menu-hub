@@ -13,7 +13,8 @@ import {
   ChevronRight,
   ClipboardList,
   Gift,
-  Wallet
+  Wallet,
+  QrCode
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -24,6 +25,7 @@ const navItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutGrid },
   { href: '/admin/ordenes', label: 'Pedidos', icon: ClipboardList },
   { href: '/admin/caja', label: 'Caja', icon: Wallet },
+  { href: '/admin/mesas', label: 'Mesas QR', icon: QrCode },
   { href: '/admin/categorias', label: 'Categorías', icon: UtensilsCrossed },
   { href: '/admin/productos', label: 'Productos', icon: UtensilsCrossed },
   { href: '/admin/recompensas', label: 'Recompensas', icon: Gift },

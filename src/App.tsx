@@ -21,6 +21,7 @@ import Categorias from "@/pages/admin/Categorias";
 import Productos from "@/pages/admin/Productos";
 import Ordenes from "@/pages/admin/Ordenes";
 import Caja from "@/pages/admin/Caja";
+import Mesas from "@/pages/admin/Mesas";
 import RecompensasAdmin from "@/pages/admin/Recompensas";
 import NotFound from "@/pages/NotFound";
 
@@ -103,6 +104,11 @@ const App = () => (
             <Route path="/admin/recompensas" element={
               <ProtectedRoute requireAdmin>
                 <RecompensasAdmin />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/mesas" element={
+              <ProtectedRoute requireAdmin>
+                <Mesas />
               </ProtectedRoute>
             } />
             
