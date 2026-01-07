@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -57,6 +57,7 @@ const getEstadoConfig = (estado: string) => {
 export default function MenuPublico() {
   const { user } = useAuth();
   const { addItem, addItems } = useCart();
+  const navigate = useNavigate();
 
   // Obtener perfil del usuario para el saludo y cumpleaños
   const { data: profile } = useQuery({
@@ -83,6 +84,38 @@ export default function MenuPublico() {
         .from('puntos_usuario')
         .select('puntos_totales')
         .eq('user_id', user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Obtener recompensas disponibles
+  const { data: recompensas } = useQuery({
+    queryKey: ['recompensas-menu'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('recompensas')
+        .select('*')
+        .eq('activo', true)
+        .order('puntos_requeridos', { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Obtener descuento activo del usuario
+  const { data: descuentoActivo } = useQuery({
+    queryKey: ['descuento-activo-menu', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('descuentos_activos')
+        .select('*, recompensas(*)')
+        .eq('user_id', user.id)
+        .eq('usado', false)
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -203,6 +236,10 @@ export default function MenuPublico() {
   };
   
   const pointsInfo = getPointsInfo();
+
+  // Verificar si tiene recompensas canjeables
+  const recompensasCanjeables = recompensas?.filter(r => puntos >= r.puntos_requeridos) || [];
+  const tieneRecompensasCanjeable = recompensasCanjeables.length > 0 && !descuentoActivo;
 
   const { data: categorias, isLoading: loadingCategorias } = useQuery({
     queryKey: ['menu-categorias'],
@@ -338,11 +375,35 @@ export default function MenuPublico() {
             <span className="font-display text-xl font-semibold">Nuestro Menú</span>
           </div>
           <div className="flex items-center gap-2">
+            {/* Badge de descuento activo o recompensas canjeables */}
+            {user && descuentoActivo && (
+              <Badge 
+                className="gap-1 cursor-pointer bg-green-500 hover:bg-green-600"
+                onClick={() => navigate('/recompensas')}
+              >
+                <Gift className="h-3 w-3" />
+                {descuentoActivo.recompensas?.porcentaje_descuento}% OFF
+              </Badge>
+            )}
+            {user && tieneRecompensasCanjeable && (
+              <Badge 
+                variant="outline" 
+                className="gap-1 cursor-pointer bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100 animate-pulse"
+                onClick={() => navigate('/recompensas')}
+              >
+                <Gift className="h-3 w-3" />
+                ¡Canjear!
+              </Badge>
+            )}
             {user && puntos > 0 && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Badge variant="secondary" className="gap-1 cursor-pointer">
+                    <Badge 
+                      variant="secondary" 
+                      className="gap-1 cursor-pointer"
+                      onClick={() => navigate('/recompensas')}
+                    >
                       <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
                       {puntos} pts
                     </Badge>
