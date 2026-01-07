@@ -12,9 +12,13 @@ import {
   Package,
   ArrowRight,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  Calendar,
+  TrendingUp,
+  TrendingDown,
+  DollarSign
 } from 'lucide-react';
-import { format, differenceInMinutes, parseISO } from 'date-fns';
+import { format, differenceInMinutes, parseISO, startOfDay, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface OrderCounts {
@@ -34,13 +38,26 @@ interface RecentOrder {
   } | null;
 }
 
+interface DailySummary {
+  todaySales: number;
+  todayOrders: number;
+  yesterdaySales: number;
+  yesterdayOrders: number;
+}
+
 export default function AdminIndex() {
   const [counts, setCounts] = useState<OrderCounts>({ pendiente: 0, confirmado: 0, en_camino: 0, entregado: 0 });
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [dailySummary, setDailySummary] = useState<DailySummary>({
+    todaySales: 0,
+    todayOrders: 0,
+    yesterdaySales: 0,
+    yesterdayOrders: 0
+  });
 
-  // Update current time every minute to refresh wait time indicators
+  // Update current time every minute to refresh wait time and clock
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(interval);
@@ -76,6 +93,9 @@ export default function AdminIndex() {
   const fetchData = async () => {
     setLoading(true);
     try {
+      const today = startOfDay(new Date());
+      const yesterday = startOfDay(subDays(new Date(), 1));
+
       // Fetch order counts by status
       const { data: ordersData } = await supabase
         .from('ordenes')
@@ -88,6 +108,28 @@ export default function AdminIndex() {
         }
       });
       setCounts(newCounts);
+
+      // Fetch today's sales
+      const { data: todayData } = await supabase
+        .from('ordenes')
+        .select('total')
+        .gte('created_at', today.toISOString())
+        .eq('estado', 'entregado');
+
+      // Fetch yesterday's sales
+      const { data: yesterdayData } = await supabase
+        .from('ordenes')
+        .select('total')
+        .gte('created_at', yesterday.toISOString())
+        .lt('created_at', today.toISOString())
+        .eq('estado', 'entregado');
+
+      setDailySummary({
+        todaySales: todayData?.reduce((sum, o) => sum + o.total, 0) || 0,
+        todayOrders: todayData?.length || 0,
+        yesterdaySales: yesterdayData?.reduce((sum, o) => sum + o.total, 0) || 0,
+        yesterdayOrders: yesterdayData?.length || 0
+      });
 
       // Fetch recent pending orders
       const { data: recentData } = await supabase
@@ -174,16 +216,63 @@ export default function AdminIndex() {
     </Card>
   );
 
+  const salesDiff = dailySummary.todaySales - dailySummary.yesterdaySales;
+  const salesTrend = dailySummary.yesterdaySales > 0 
+    ? ((salesDiff / dailySummary.yesterdaySales) * 100).toFixed(0)
+    : dailySummary.todaySales > 0 ? '100' : '0';
+
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Dashboard</h1>
+        {/* Header con fecha y hora */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Dashboard</h1>
+            <div className="flex items-center gap-2 text-muted-foreground mt-1">
+              <Calendar className="h-4 w-4" />
+              <span className="capitalize">
+                {format(currentTime, "EEEE, d 'de' MMMM yyyy", { locale: es })}
+              </span>
+              <span className="text-foreground font-medium">
+                {format(currentTime, "HH:mm")} hrs
+              </span>
+            </div>
+          </div>
           <Button variant="outline" onClick={fetchData} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
         </div>
+
+        {/* Resumen de ventas del día */}
+        <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Ventas de Hoy</p>
+                <p className="text-2xl font-bold flex items-center gap-1">
+                  <DollarSign className="h-5 w-5 text-primary" />
+                  S/ {dailySummary.todaySales.toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Órdenes Hoy</p>
+                <p className="text-2xl font-bold">{dailySummary.todayOrders}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Ventas Ayer</p>
+                <p className="text-xl text-muted-foreground">S/ {dailySummary.yesterdaySales.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Tendencia</p>
+                <div className={`flex items-center gap-1 text-lg font-semibold ${salesDiff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {salesDiff >= 0 ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
+                  {salesDiff >= 0 ? '+' : ''}{salesTrend}%
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Status cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
