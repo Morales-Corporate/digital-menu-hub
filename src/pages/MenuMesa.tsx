@@ -1,14 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, UtensilsCrossed, Plus, ShoppingCart, Minus, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Loader2, UtensilsCrossed, Plus, ShoppingCart, Minus, X, User, LogIn, UserPlus } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 type Producto = Tables<'productos'>;
 type Categoria = Tables<'categorias'>;
@@ -21,11 +25,21 @@ interface CartItem {
   imagen_url?: string | null;
 }
 
+type AuthMode = 'login' | 'register';
+
 export default function MenuMesa() {
   const { numero } = useParams<{ numero: string }>();
   const navigate = useNavigate();
+  const { user, signIn, signUp, loading: authLoading } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authName, setAuthName] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [authSubmitting, setAuthSubmitting] = useState(false);
   
   const numeroMesa = parseInt(numero || '0', 10);
 
@@ -101,12 +115,61 @@ export default function MenuMesa() {
   const total = cart.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
   const itemCount = cart.reduce((sum, item) => sum + item.cantidad, 0);
 
+  const handleAuthSubmit = async () => {
+    setAuthError('');
+    setAuthSubmitting(true);
+    
+    try {
+      if (authMode === 'login') {
+        const { error } = await signIn(authEmail, authPassword);
+        if (error) {
+          setAuthError(error.message === 'Invalid login credentials' 
+            ? 'Credenciales incorrectas' 
+            : error.message);
+          return;
+        }
+        toast.success('¡Sesión iniciada!');
+        setShowAuthDialog(false);
+      } else {
+        const { error } = await signUp(authEmail, authPassword, authName);
+        if (error) {
+          if (error.message.includes('already registered')) {
+            setAuthError('Este correo ya está registrado');
+          } else {
+            setAuthError(error.message);
+          }
+          return;
+        }
+        toast.success('¡Cuenta creada! Ya puedes hacer tu pedido.');
+        setShowAuthDialog(false);
+      }
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
   const handleCheckout = () => {
     if (cart.length === 0) {
       toast.error('Tu carrito está vacío');
       return;
     }
-    // Navigate to guest checkout with cart and mesa info
+    
+    if (user) {
+      // Logged in user - go to regular checkout with mesa info
+      navigate('/checkout', { 
+        state: { 
+          items: cart, 
+          mesa: numeroMesa 
+        } 
+      });
+    } else {
+      // Not logged in - show options dialog
+      setShowAuthDialog(true);
+    }
+  };
+
+  const handleGuestCheckout = () => {
+    setShowAuthDialog(false);
     navigate('/checkout-invitado', { 
       state: { 
         items: cart, 
@@ -238,15 +301,139 @@ export default function MenuMesa() {
                     <span>Total:</span>
                     <span>S/ {total.toFixed(2)}</span>
                   </div>
-                  <Button className="w-full" size="lg" onClick={handleCheckout}>
-                    Continuar con el pedido
-                  </Button>
+                  {user ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground text-center">
+                        Ordenando como <span className="font-medium text-foreground">{user.email}</span>
+                      </p>
+                      <Button className="w-full" size="lg" onClick={handleCheckout}>
+                        Continuar con el pedido
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button className="w-full" size="lg" onClick={handleCheckout}>
+                      Continuar con el pedido
+                    </Button>
+                  )}
                 </div>
               )}
             </SheetContent>
           </Sheet>
         </div>
       </header>
+
+      {/* Auth Dialog */}
+      <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {authMode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
+            </DialogTitle>
+            <DialogDescription>
+              {authMode === 'login' 
+                ? 'Inicia sesión para ganar puntos y ver tu historial' 
+                : 'Crea tu cuenta para acumular puntos con cada pedido'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {authMode === 'register' && (
+              <div className="space-y-2">
+                <Label htmlFor="auth-name">Nombre completo</Label>
+                <Input
+                  id="auth-name"
+                  placeholder="Tu nombre"
+                  value={authName}
+                  onChange={(e) => setAuthName(e.target.value)}
+                />
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="auth-email">Correo electrónico</Label>
+              <Input
+                id="auth-email"
+                type="email"
+                placeholder="tu@email.com"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="auth-password">Contraseña</Label>
+              <Input
+                id="auth-password"
+                type="password"
+                placeholder="••••••••"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+              />
+            </div>
+            
+            {authError && (
+              <p className="text-sm text-destructive">{authError}</p>
+            )}
+            
+            <Button 
+              className="w-full" 
+              onClick={handleAuthSubmit}
+              disabled={authSubmitting}
+            >
+              {authSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : authMode === 'login' ? (
+                <LogIn className="h-4 w-4 mr-2" />
+              ) : (
+                <UserPlus className="h-4 w-4 mr-2" />
+              )}
+              {authMode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
+            </Button>
+            
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">o</span>
+              </div>
+            </div>
+            
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={handleGuestCheckout}
+            >
+              <User className="h-4 w-4 mr-2" />
+              Continuar como invitado
+            </Button>
+            
+            <p className="text-center text-sm text-muted-foreground">
+              {authMode === 'login' ? (
+                <>
+                  ¿No tienes cuenta?{' '}
+                  <button 
+                    className="text-primary hover:underline"
+                    onClick={() => { setAuthMode('register'); setAuthError(''); }}
+                  >
+                    Regístrate
+                  </button>
+                </>
+              ) : (
+                <>
+                  ¿Ya tienes cuenta?{' '}
+                  <button 
+                    className="text-primary hover:underline"
+                    onClick={() => { setAuthMode('login'); setAuthError(''); }}
+                  >
+                    Inicia sesión
+                  </button>
+                </>
+              )}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Hero */}
       <section className="relative py-8 bg-gradient-to-b from-secondary/50 to-background">
