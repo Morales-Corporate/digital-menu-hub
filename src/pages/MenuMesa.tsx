@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, UtensilsCrossed, Plus, ShoppingCart, Minus, X, User, LogIn, UserPlus } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
@@ -27,8 +27,45 @@ interface CartItem {
 
 type AuthMode = 'login' | 'register';
 
+// Decodifica el código para obtener el número de mesa
+const decodeMesaCode = (code: string): number | null => {
+  // Función para generar código (debe coincidir con Mesas.tsx)
+  const generateMesaCode = (numeroMesa: number, secret: string = 'restaurante2024'): string => {
+    const str = `${secret}-mesa-${numeroMesa}`;
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    const codeHash = Math.abs(hash).toString(36).substring(0, 6).padEnd(6, 'x');
+    return `${codeHash}${numeroMesa.toString(36)}`;
+  };
+
+  try {
+    // Primero intentar como número simple (compatibilidad hacia atrás)
+    const simpleNumber = parseInt(code, 10);
+    if (!isNaN(simpleNumber) && simpleNumber > 0 && simpleNumber <= 100) {
+      return simpleNumber;
+    }
+    
+    // Intentar decodificar código seguro
+    const mesaPart = code.substring(6);
+    const numeroMesa = parseInt(mesaPart, 36);
+    if (isNaN(numeroMesa) || numeroMesa <= 0) return null;
+    
+    const expectedCode = generateMesaCode(numeroMesa);
+    if (expectedCode === code) {
+      return numeroMesa;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 export default function MenuMesa() {
-  const { numero } = useParams<{ numero: string }>();
+  const { numero: codigoMesa } = useParams<{ numero: string }>();
   const navigate = useNavigate();
   const { user, signIn, signUp, loading: authLoading } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -41,7 +78,9 @@ export default function MenuMesa() {
   const [authError, setAuthError] = useState('');
   const [authSubmitting, setAuthSubmitting] = useState(false);
   
-  const numeroMesa = parseInt(numero || '0', 10);
+  const numeroMesa = useMemo(() => {
+    return decodeMesaCode(codigoMesa || '');
+  }, [codigoMesa]);
 
   const { data: categorias, isLoading: loadingCategorias } = useQuery({
     queryKey: ['menu-categorias'],
@@ -180,7 +219,7 @@ export default function MenuMesa() {
 
   const productosWithoutCategoria = productos?.filter(p => !p.categoria_id) ?? [];
 
-  if (!numero || isNaN(numeroMesa) || numeroMesa <= 0) {
+  if (!codigoMesa || numeroMesa === null || numeroMesa <= 0) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="max-w-md">

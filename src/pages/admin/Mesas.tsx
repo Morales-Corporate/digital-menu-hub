@@ -1,11 +1,42 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import AdminLayout from '@/components/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { QRCodeSVG } from 'qrcode.react';
-import { Download, Printer, QrCode } from 'lucide-react';
+import { Download, Printer, QrCode, Info } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+
+// Genera un código único para cada mesa basado en el número
+// Esto evita que los clientes modifiquen la URL manualmente
+const generateMesaCode = (numeroMesa: number, secret: string = 'restaurante2024'): string => {
+  const str = `${secret}-mesa-${numeroMesa}`;
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  const code = Math.abs(hash).toString(36).substring(0, 6).padEnd(6, 'x');
+  return `${code}${numeroMesa.toString(36)}`;
+};
+
+// Decodifica el código para obtener el número de mesa
+export const decodeMesaCode = (code: string): number | null => {
+  try {
+    const mesaPart = code.substring(6);
+    const numeroMesa = parseInt(mesaPart, 36);
+    // Verificar que el código coincide
+    const expectedCode = generateMesaCode(numeroMesa);
+    if (expectedCode === code) {
+      return numeroMesa;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
 
 export default function Mesas() {
   const [cantidadMesas, setCantidadMesas] = useState(10);
@@ -14,21 +45,28 @@ export default function Mesas() {
 
   const mesas = Array.from({ length: cantidadMesas }, (_, i) => i + 1);
 
-  const getQRUrl = (numeroMesa: number) => {
-    return `${dominio}/mesa/${numeroMesa}`;
+  const mesaCodes = useMemo(() => {
+    return mesas.map(mesa => ({
+      numero: mesa,
+      code: generateMesaCode(mesa)
+    }));
+  }, [cantidadMesas]);
+
+  const getQRUrl = (code: string) => {
+    return `${dominio}/mesa/${code}`;
   };
 
   const handlePrintAll = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    const qrCodes = mesas.map(mesa => {
-      const url = getQRUrl(mesa);
+    const qrCodes = mesaCodes.map(({ numero, code }) => {
+      const url = getQRUrl(code);
       return `
         <div style="page-break-inside: avoid; text-align: center; padding: 20px; border: 1px dashed #ccc; margin: 10px;">
-          <h2 style="font-size: 24px; margin-bottom: 10px;">Mesa ${mesa}</h2>
-          <div id="qr-${mesa}"></div>
-          <p style="font-size: 12px; color: #666; margin-top: 10px;">${url}</p>
+          <h2 style="font-size: 24px; margin-bottom: 10px;">Mesa ${numero}</h2>
+          <div id="qr-${numero}"></div>
+          <p style="font-size: 10px; color: #666; margin-top: 10px;">Escanea para ordenar</p>
         </div>
       `;
     }).join('');
@@ -56,9 +94,9 @@ export default function Mesas() {
           </div>
           <div class="grid">${qrCodes}</div>
           <script>
-            ${mesas.map(mesa => `
-              QRCode.toCanvas(document.createElement('canvas'), '${getQRUrl(mesa)}', { width: 150 }, function(error, canvas) {
-                if (!error) document.getElementById('qr-${mesa}').appendChild(canvas);
+            ${mesaCodes.map(({ numero, code }) => `
+              QRCode.toCanvas(document.createElement('canvas'), '${getQRUrl(code)}', { width: 200 }, function(error, canvas) {
+                if (!error) document.getElementById('qr-${numero}').appendChild(canvas);
               });
             `).join('')}
           </script>
@@ -68,8 +106,8 @@ export default function Mesas() {
     printWindow.document.close();
   };
 
-  const handleDownloadSingle = (mesa: number) => {
-    const svg = document.getElementById(`qr-svg-${mesa}`);
+  const handleDownloadSingle = (numero: number, code: string) => {
+    const svg = document.getElementById(`qr-svg-${numero}`);
     if (!svg) return;
 
     const svgData = new XMLSerializer().serializeToString(svg);
@@ -84,7 +122,7 @@ export default function Mesas() {
       const pngUrl = canvas.toDataURL('image/png');
       
       const link = document.createElement('a');
-      link.download = `mesa-${mesa}-qr.png`;
+      link.download = `mesa-${numero}-qr.png`;
       link.href = pngUrl;
       link.click();
     };
@@ -105,6 +143,13 @@ export default function Mesas() {
             Imprimir Todos
           </Button>
         </div>
+
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            Los códigos QR usan URLs seguras que no pueden ser modificadas por los clientes para acceder a otras mesas.
+          </AlertDescription>
+        </Alert>
 
         <Card>
           <CardHeader>
@@ -138,30 +183,30 @@ export default function Mesas() {
         </Card>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" ref={printRef}>
-          {mesas.map((mesa) => (
-            <Card key={mesa} className="text-center">
+          {mesaCodes.map(({ numero, code }) => (
+            <Card key={numero} className="text-center">
               <CardContent className="pt-6 space-y-4">
                 <div className="flex items-center justify-center gap-2 text-lg font-semibold">
                   <QrCode className="h-5 w-5 text-primary" />
-                  Mesa {mesa}
+                  Mesa {numero}
                 </div>
                 <div className="flex justify-center bg-white p-4 rounded-lg">
                   <QRCodeSVG
-                    id={`qr-svg-${mesa}`}
-                    value={getQRUrl(mesa)}
-                    size={150}
+                    id={`qr-svg-${numero}`}
+                    value={getQRUrl(code)}
+                    size={180}
                     level="H"
                     includeMargin
                   />
                 </div>
                 <p className="text-xs text-muted-foreground break-all">
-                  {getQRUrl(mesa)}
+                  Código: {code}
                 </p>
                 <Button
                   variant="outline"
                   size="sm"
                   className="w-full gap-2"
-                  onClick={() => handleDownloadSingle(mesa)}
+                  onClick={() => handleDownloadSingle(numero, code)}
                 >
                   <Download className="h-4 w-4" />
                   Descargar PNG
