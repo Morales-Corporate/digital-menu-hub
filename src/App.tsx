@@ -23,6 +23,7 @@ import Ordenes from "@/pages/admin/Ordenes";
 import Caja from "@/pages/admin/Caja";
 import Mesas from "@/pages/admin/Mesas";
 import RecompensasAdmin from "@/pages/admin/Recompensas";
+import Estadisticas from "@/pages/admin/Estadisticas";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -109,6 +110,11 @@ const App = () => (
             <Route path="/admin/mesas" element={
               <ProtectedRoute requireAdmin>
                 <Mesas />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/estadisticas" element={
+              <ProtectedRoute requireAdmin>
+                <Estadisticas />
               </ProtectedRoute>
             } />
             
