@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,17 +9,35 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, CheckCircle, Clock, QrCode, Upload, Loader2, Banknote, CreditCard, Gift, Percent } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, QrCode, Upload, Loader2, Banknote, CreditCard, Gift, Percent, UtensilsCrossed } from 'lucide-react';
 import { toast } from 'sonner';
+
+interface LocationState {
+  items?: { id: string; nombre: string; precio: number; cantidad: number; imagen_url?: string | null }[];
+  mesa?: number;
+}
 
 type OrderStatus = 'resumen' | 'metodo' | 'pago' | 'confirmando' | 'confirmado';
 type PaymentMethod = 'yape_plin' | 'efectivo' | 'tarjeta';
 
 export default function Checkout() {
-  const { items, total: subtotal, clearCart } = useCart();
+  const location = useLocation();
+  const locationState = location.state as LocationState | undefined;
+  const mesaFromState = locationState?.mesa;
+  const itemsFromState = locationState?.items;
+  
+  const { items: cartItems, total: cartTotal, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  
+  // Use items from state (mesa QR) or from cart (regular checkout)
+  const items = itemsFromState || cartItems;
+  const subtotal = itemsFromState 
+    ? itemsFromState.reduce((sum, item) => sum + item.precio * item.cantidad, 0)
+    : cartTotal;
+  const numeroMesa = mesaFromState || null;
+  
   const [status, setStatus] = useState<OrderStatus>('resumen');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -183,7 +201,9 @@ export default function Checkout() {
           metodo_pago: paymentMethod,
           puntos_ganados: Math.floor(total),
           comprobante_pago: comprobantePath,
-          monto_pago: paymentMethod === 'efectivo' ? parseFloat(montoPago) : null
+          monto_pago: paymentMethod === 'efectivo' ? parseFloat(montoPago) : null,
+          numero_mesa: numeroMesa,
+          es_invitado: false
         })
         .select()
         .single();
@@ -284,7 +304,15 @@ export default function Checkout() {
         {status === 'resumen' && (
           <Card>
             <CardHeader>
-              <CardTitle>Resumen del Pedido</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                Resumen del Pedido
+                {numeroMesa && (
+                  <Badge variant="secondary" className="ml-2">
+                    <UtensilsCrossed className="h-3 w-3 mr-1" />
+                    Mesa {numeroMesa}
+                  </Badge>
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {items.map(item => (
@@ -363,7 +391,9 @@ export default function Checkout() {
                 </div>
                 <div>
                   <p className="font-semibold">Efectivo</p>
-                  <p className="text-sm text-muted-foreground">Pago contra entrega</p>
+                  <p className="text-sm text-muted-foreground">
+                    {numeroMesa ? 'Pago al mesero' : 'Pago contra entrega'}
+                  </p>
                 </div>
               </Button>
 
@@ -377,7 +407,9 @@ export default function Checkout() {
                 </div>
                 <div>
                   <p className="font-semibold">Tarjeta (POS)</p>
-                  <p className="text-sm text-muted-foreground">El repartidor lleva el POS</p>
+                  <p className="text-sm text-muted-foreground">
+                    {numeroMesa ? 'El mesero trae el POS' : 'El repartidor lleva el POS'}
+                  </p>
                 </div>
               </Button>
             </CardContent>
@@ -473,7 +505,9 @@ export default function Checkout() {
               <CardTitle className="flex items-center gap-2">
                 <Banknote className="h-5 w-5 text-green-600" /> Pago en Efectivo
               </CardTitle>
-              <CardDescription>El pago se realizará al momento de la entrega</CardDescription>
+              <CardDescription>
+                {numeroMesa ? 'El pago se realizará al mesero' : 'El pago se realizará al momento de la entrega'}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="bg-green-500/10 p-4 rounded-lg">
@@ -528,7 +562,9 @@ export default function Checkout() {
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5 text-blue-600" /> Pago con Tarjeta
               </CardTitle>
-              <CardDescription>El repartidor llevará el POS para tu pago</CardDescription>
+              <CardDescription>
+                {numeroMesa ? 'El mesero traerá el POS a tu mesa' : 'El repartidor llevará el POS para tu pago'}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="bg-blue-500/10 p-4 rounded-lg">
@@ -539,7 +575,9 @@ export default function Checkout() {
               <div className="bg-muted p-4 rounded-lg text-center">
                 <CreditCard className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
-                  Al momento de la entrega, el repartidor tendrá un POS disponible para que puedas pagar con tu tarjeta de débito o crédito.
+                  {numeroMesa 
+                    ? 'El mesero traerá el POS a tu mesa para que puedas pagar con tu tarjeta de débito o crédito.'
+                    : 'Al momento de la entrega, el repartidor tendrá un POS disponible para que puedas pagar con tu tarjeta de débito o crédito.'}
                 </p>
               </div>
 
