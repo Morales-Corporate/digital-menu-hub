@@ -57,15 +57,23 @@ export default function Mesas() {
   };
 
   const handlePrintAll = () => {
+    // Recopilar los SVGs existentes de la página
+    const svgDataList = mesaCodes.map(({ numero }) => {
+      const svg = document.getElementById(`qr-svg-${numero}`);
+      if (!svg) return null;
+      const svgData = new XMLSerializer().serializeToString(svg);
+      return { numero, svgData };
+    }).filter(Boolean);
+
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    const qrCodes = mesaCodes.map(({ numero, code }) => {
-      const url = getQRUrl(code);
+    const qrCodes = svgDataList.map((item) => {
+      if (!item) return '';
       return `
         <div style="page-break-inside: avoid; text-align: center; padding: 20px; border: 1px dashed #ccc; margin: 10px;">
-          <h2 style="font-size: 24px; margin-bottom: 10px;">Mesa ${numero}</h2>
-          <div id="qr-${numero}"></div>
+          <h2 style="font-size: 24px; margin-bottom: 10px;">Mesa ${item.numero}</h2>
+          <div style="display: flex; justify-content: center;">${item.svgData}</div>
           <p style="font-size: 10px; color: #666; margin-top: 10px;">Escanea para ordenar</p>
         </div>
       `;
@@ -76,7 +84,6 @@ export default function Mesas() {
       <html>
         <head>
           <title>Códigos QR - Mesas</title>
-          <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
           <style>
             body { font-family: Arial, sans-serif; }
             .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; padding: 20px; }
@@ -93,13 +100,6 @@ export default function Mesas() {
             </button>
           </div>
           <div class="grid">${qrCodes}</div>
-          <script>
-            ${mesaCodes.map(({ numero, code }) => `
-              QRCode.toCanvas(document.createElement('canvas'), '${getQRUrl(code)}', { width: 200 }, function(error, canvas) {
-                if (!error) document.getElementById('qr-${numero}').appendChild(canvas);
-              });
-            `).join('')}
-          </script>
         </body>
       </html>
     `);
