@@ -11,9 +11,10 @@ import {
   Truck, 
   Package,
   ArrowRight,
-  RefreshCw
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, differenceInMinutes, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface OrderCounts {
@@ -37,6 +38,40 @@ export default function AdminIndex() {
   const [counts, setCounts] = useState<OrderCounts>({ pendiente: 0, confirmado: 0, en_camino: 0, entregado: 0 });
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [, setCurrentTime] = useState(new Date());
+
+  // Update current time every minute to refresh wait time indicators
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getWaitTimeDisplay = (createdAt: string) => {
+    const waitMinutes = differenceInMinutes(new Date(), parseISO(createdAt));
+    
+    if (waitMinutes >= 25) {
+      return (
+        <Badge variant="destructive" className="animate-pulse text-xs">
+          <AlertTriangle className="h-3 w-3 mr-1" />
+          {waitMinutes} min
+        </Badge>
+      );
+    } else if (waitMinutes >= 15) {
+      return (
+        <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300 text-xs">
+          <Clock className="h-3 w-3 mr-1" />
+          {waitMinutes} min
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge variant="outline" className="text-xs">
+          <Clock className="h-3 w-3 mr-1" />
+          {waitMinutes} min
+        </Badge>
+      );
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -195,8 +230,11 @@ export default function AdminIndex() {
               <div className="space-y-3">
                 {recentOrders.map(order => (
                   <div key={order.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
-                    <div>
-                      <p className="font-medium">{order.profiles?.full_name || 'Sin nombre'}</p>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{order.profiles?.full_name || 'Sin nombre'}</p>
+                        {getWaitTimeDisplay(order.created_at)}
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         {format(new Date(order.created_at), "HH:mm 'hrs'", { locale: es })} - S/ {order.total.toFixed(2)}
                       </p>
