@@ -198,38 +198,50 @@ export type Database = {
         Row: {
           comprobante_pago: string | null
           created_at: string | null
+          es_invitado: boolean | null
           estado: string
           id: string
           metodo_pago: string | null
           monto_pago: number | null
           motivo_cancelacion: string | null
+          nombre_invitado: string | null
+          numero_mesa: number | null
           puntos_ganados: number
+          telefono_invitado: string | null
           total: number
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           comprobante_pago?: string | null
           created_at?: string | null
+          es_invitado?: boolean | null
           estado?: string
           id?: string
           metodo_pago?: string | null
           monto_pago?: number | null
           motivo_cancelacion?: string | null
+          nombre_invitado?: string | null
+          numero_mesa?: number | null
           puntos_ganados?: number
+          telefono_invitado?: string | null
           total?: number
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           comprobante_pago?: string | null
           created_at?: string | null
+          es_invitado?: boolean | null
           estado?: string
           id?: string
           metodo_pago?: string | null
           monto_pago?: number | null
           motivo_cancelacion?: string | null
+          nombre_invitado?: string | null
+          numero_mesa?: number | null
           puntos_ganados?: number
+          telefono_invitado?: string | null
           total?: number
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }

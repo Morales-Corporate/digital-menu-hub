@@ -7,6 +7,8 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { CartProvider } from "@/hooks/useCart";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import MenuPublico from "@/pages/MenuPublico";
+import MenuMesa from "@/pages/MenuMesa";
+import CheckoutInvitado from "@/pages/CheckoutInvitado";
 import Auth from "@/pages/Auth";
 import MiCuenta from "@/pages/MiCuenta";
 import MisOrdenes from "@/pages/MisOrdenes";
@@ -35,6 +37,9 @@ const App = () => (
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<MenuPublico />} />
+            <Route path="/menu" element={<MenuPublico />} />
+            <Route path="/mesa/:numero" element={<MenuMesa />} />
+            <Route path="/checkout-invitado" element={<CheckoutInvitado />} />
             <Route path="/auth" element={<Auth />} />
             
             {/* User routes - protected */}

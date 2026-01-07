@@ -38,7 +38,11 @@ interface Order {
   comprobante_pago: string | null;
   monto_pago: number | null;
   motivo_cancelacion: string | null;
-  user_id: string;
+  user_id: string | null;
+  es_invitado: boolean;
+  nombre_invitado: string | null;
+  telefono_invitado: string | null;
+  numero_mesa: number | null;
   profiles: {
     full_name: string | null;
     email: string | null;
@@ -107,17 +111,20 @@ export default function Ordenes() {
 
       if (ordersError) throw ordersError;
       
-      const userIds = [...new Set(ordersData?.map(o => o.user_id) || [])];
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, telefono, direccion, referencia_direccion, latitud, longitud')
-        .in('id', userIds);
+      // Filter out null user_ids for profile lookup
+      const userIds = [...new Set(ordersData?.filter(o => o.user_id).map(o => o.user_id) || [])];
+      const { data: profilesData } = userIds.length > 0 
+        ? await supabase
+            .from('profiles')
+            .select('id, full_name, email, telefono, direccion, referencia_direccion, latitud, longitud')
+            .in('id', userIds)
+        : { data: [] };
       
-      const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+      const profilesMap = new Map((profilesData || []).map(p => [p.id, p] as const));
       
       const ordersWithProfiles = ordersData?.map(order => ({
         ...order,
-        profiles: profilesMap.get(order.user_id) || null
+        profiles: order.user_id ? profilesMap.get(order.user_id) || null : null
       })) || [];
       
       setOrders(ordersWithProfiles as Order[]);
@@ -383,8 +390,20 @@ export default function Ordenes() {
               </TableCell>
               <TableCell>
                 <div>
-                  <p className="font-medium">{order.profiles?.full_name || 'Sin nombre'}</p>
-                  <p className="text-xs text-muted-foreground">{order.profiles?.telefono}</p>
+                  {order.es_invitado ? (
+                    <>
+                      <div className="flex items-center gap-1">
+                        <p className="font-medium">{order.nombre_invitado || 'Invitado'}</p>
+                        <Badge variant="secondary" className="text-xs">Mesa {order.numero_mesa}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{order.telefono_invitado || 'Sin teléfono'}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-medium">{order.profiles?.full_name || 'Sin nombre'}</p>
+                      <p className="text-xs text-muted-foreground">{order.profiles?.telefono}</p>
+                    </>
+                  )}
                 </div>
               </TableCell>
               <TableCell>
