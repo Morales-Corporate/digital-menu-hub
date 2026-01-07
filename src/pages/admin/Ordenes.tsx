@@ -1,23 +1,22 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { 
   CheckCircle, Clock, Eye, RefreshCw, Image as ImageIcon, Truck, Package, 
   MapPin, Phone, User, Banknote, CreditCard, QrCode, XCircle, AlertTriangle,
-  Calendar, DollarSign
+  DollarSign
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { format, differenceInMinutes, parseISO, startOfDay, endOfDay } from 'date-fns';
+import { format, differenceInMinutes, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface OrderItem {
@@ -73,8 +72,7 @@ export default function Ordenes() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelOrderId, setCancelOrderId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState('');
-  const [showCierreCaja, setShowCierreCaja] = useState(false);
-  const [cierreDate, setCierreDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [closedDates, setClosedDates] = useState<string[]>([]);
   const [, setCurrentTime] = useState(new Date());
 
   // Update current time every minute to refresh wait time indicators
@@ -86,6 +84,14 @@ export default function Ordenes() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
+      // First, get closed dates to filter out closed orders
+      const { data: cierresData } = await supabase
+        .from('cierres_caja')
+        .select('fecha');
+      
+      const fechasCerradas = cierresData?.map(c => c.fecha) || [];
+      setClosedDates(fechasCerradas);
+
       const { data: ordersData, error: ordersError } = await supabase
         .from('ordenes')
         .select(`
@@ -336,36 +342,17 @@ export default function Ordenes() {
     );
   };
 
-  // Cierre de Caja calculations
-  const getCierreData = () => {
-    const selectedDate = parseISO(cierreDate);
-    const dayStart = startOfDay(selectedDate);
-    const dayEnd = endOfDay(selectedDate);
-
-    const dayOrders = orders.filter(order => {
-      const orderDate = parseISO(order.created_at);
-      return orderDate >= dayStart && orderDate <= dayEnd && order.estado === 'entregado';
-    });
-
-    const totalVentas = dayOrders.reduce((sum, order) => sum + order.total, 0);
-    const cantidadPedidos = dayOrders.length;
-
-    const porMetodo = {
-      yape_plin: dayOrders.filter(o => o.metodo_pago === 'yape_plin').reduce((sum, o) => sum + o.total, 0),
-      efectivo: dayOrders.filter(o => o.metodo_pago === 'efectivo').reduce((sum, o) => sum + o.total, 0),
-      tarjeta: dayOrders.filter(o => o.metodo_pago === 'tarjeta').reduce((sum, o) => sum + o.total, 0),
-    };
-
-    const cantidadPorMetodo = {
-      yape_plin: dayOrders.filter(o => o.metodo_pago === 'yape_plin').length,
-      efectivo: dayOrders.filter(o => o.metodo_pago === 'efectivo').length,
-      tarjeta: dayOrders.filter(o => o.metodo_pago === 'tarjeta').length,
-    };
-
-    return { totalVentas, cantidadPedidos, porMetodo, cantidadPorMetodo, dayOrders };
-  };
-
-  const filteredOrders = orders.filter(order => order.estado === activeTab);
+  // Filter orders: hide entregado/cancelado from closed dates
+  const filteredOrders = orders.filter(order => {
+    // For entregado and cancelado, hide if their date has been closed
+    if (order.estado === 'entregado' || order.estado === 'cancelado') {
+      const orderDate = format(parseISO(order.created_at), 'yyyy-MM-dd');
+      if (closedDates.includes(orderDate)) {
+        return false;
+      }
+    }
+    return order.estado === activeTab;
+  });
 
   const OrderTable = ({ orders }: { orders: Order[] }) => (
     <Table>
@@ -551,23 +538,15 @@ export default function Ordenes() {
     </Table>
   );
 
-  const cierreData = getCierreData();
-
   return (
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex justify-between items-center flex-wrap gap-4">
           <h1 className="text-2xl font-bold">Gestión de Pedidos</h1>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowCierreCaja(true)}>
-              <DollarSign className="h-4 w-4 mr-2" />
-              Cierre de Caja
-            </Button>
-            <Button variant="outline" onClick={fetchOrders} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Actualizar
-            </Button>
-          </div>
+          <Button variant="outline" onClick={fetchOrders} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Actualizar
+          </Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -674,89 +653,6 @@ export default function Ordenes() {
           </DialogContent>
         </Dialog>
 
-        {/* Cierre de Caja dialog */}
-        <Dialog open={showCierreCaja} onOpenChange={setShowCierreCaja}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-primary" /> Cierre de Caja
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                <Calendar className="h-5 w-5 text-muted-foreground" />
-                <Input
-                  type="date"
-                  value={cierreDate}
-                  onChange={(e) => setCierreDate(e.target.value)}
-                  className="w-auto"
-                />
-              </div>
-
-              <Separator />
-
-              <div className="grid grid-cols-2 gap-4">
-                <Card>
-                  <CardContent className="pt-4">
-                    <p className="text-sm text-muted-foreground">Total Ventas</p>
-                    <p className="text-2xl font-bold text-primary">S/ {cierreData.totalVentas.toFixed(2)}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-4">
-                    <p className="text-sm text-muted-foreground">Pedidos Entregados</p>
-                    <p className="text-2xl font-bold">{cierreData.cantidadPedidos}</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div>
-                <p className="font-medium mb-3">Desglose por Método de Pago</p>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <QrCode className="h-5 w-5 text-primary" />
-                      <span>Yape/Plin</span>
-                      <Badge variant="outline">{cierreData.cantidadPorMetodo.yape_plin} pedidos</Badge>
-                    </div>
-                    <span className="font-bold">S/ {cierreData.porMetodo.yape_plin.toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Banknote className="h-5 w-5 text-green-600" />
-                      <span>Efectivo</span>
-                      <Badge variant="outline">{cierreData.cantidadPorMetodo.efectivo} pedidos</Badge>
-                    </div>
-                    <span className="font-bold">S/ {cierreData.porMetodo.efectivo.toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-5 w-5 text-blue-600" />
-                      <span>Tarjeta (POS)</span>
-                      <Badge variant="outline">{cierreData.cantidadPorMetodo.tarjeta} pedidos</Badge>
-                    </div>
-                    <span className="font-bold">S/ {cierreData.porMetodo.tarjeta.toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {cierreData.dayOrders.length > 0 && (
-                <div>
-                  <p className="font-medium mb-2">Detalle de pedidos</p>
-                  <div className="max-h-48 overflow-y-auto space-y-2">
-                    {cierreData.dayOrders.map(order => (
-                      <div key={order.id} className="flex justify-between text-sm p-2 bg-muted/50 rounded">
-                        <span className="font-mono">{order.id.slice(0, 8)}</span>
-                        <span>{format(parseISO(order.created_at), 'HH:mm')}</span>
-                        <span className="font-medium">S/ {order.total.toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     </AdminLayout>
   );

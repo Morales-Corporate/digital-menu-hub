@@ -18,6 +18,7 @@ import AdminIndex from "@/pages/admin/AdminIndex";
 import Categorias from "@/pages/admin/Categorias";
 import Productos from "@/pages/admin/Productos";
 import Ordenes from "@/pages/admin/Ordenes";
+import Caja from "@/pages/admin/Caja";
 import RecompensasAdmin from "@/pages/admin/Recompensas";
 import NotFound from "@/pages/NotFound";
 
@@ -87,6 +88,11 @@ const App = () => (
             <Route path="/admin/ordenes" element={
               <ProtectedRoute requireAdmin>
                 <Ordenes />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/caja" element={
+              <ProtectedRoute requireAdmin>
+                <Caja />
               </ProtectedRoute>
             } />
             <Route path="/admin/recompensas" element={
