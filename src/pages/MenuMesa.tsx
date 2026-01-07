@@ -7,10 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, UtensilsCrossed, Plus, ShoppingCart, Minus, X, User, LogIn, UserPlus } from 'lucide-react';
+import { Loader2, UtensilsCrossed, Plus, ShoppingCart, Minus, X, User, LogIn, UserPlus, Clock, CheckCircle, ChefHat, Package } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
@@ -64,6 +64,34 @@ const decodeMesaCode = (code: string): number | null => {
   }
 };
 
+interface GuestOrderData {
+  orderId: string;
+  mesa: number;
+  nombre: string;
+  createdAt: string;
+}
+
+interface PendingOrder {
+  id: string;
+  estado: string;
+  total: number;
+  created_at: string;
+  nombre_invitado: string | null;
+  orden_items: {
+    id: string;
+    cantidad: number;
+    precio_unitario: number;
+    productos: { nombre: string } | null;
+  }[];
+}
+
+const ESTADO_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
+  pendiente: { label: 'Pendiente', icon: Clock, color: 'text-amber-700', bgColor: 'bg-amber-100' },
+  confirmado: { label: 'Confirmado', icon: CheckCircle, color: 'text-blue-700', bgColor: 'bg-blue-100' },
+  en_preparacion: { label: 'En Preparación', icon: ChefHat, color: 'text-orange-700', bgColor: 'bg-orange-100' },
+  entregado: { label: 'Entregado', icon: Package, color: 'text-green-700', bgColor: 'bg-green-100' },
+};
+
 export default function MenuMesa() {
   const { numero: codigoMesa } = useParams<{ numero: string }>();
   const navigate = useNavigate();
@@ -77,11 +105,99 @@ export default function MenuMesa() {
   const [authName, setAuthName] = useState('');
   const [authError, setAuthError] = useState('');
   const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [pendingOrder, setPendingOrder] = useState<PendingOrder | null>(null);
   
   const numeroMesa = useMemo(() => {
     return decodeMesaCode(codigoMesa || '');
   }, [codigoMesa]);
 
+  // Check for pending guest order and subscribe to updates
+  useEffect(() => {
+    if (!numeroMesa) return;
+    
+    const fetchPendingOrder = async () => {
+      const storedOrder = localStorage.getItem(`guest_order_${numeroMesa}`);
+      if (!storedOrder) return;
+      
+      try {
+        const guestData: GuestOrderData = JSON.parse(storedOrder);
+        
+        // Check if order is still pending (not entregado or cancelado)
+        const { data: order, error } = await supabase
+          .from('ordenes')
+          .select(`
+            id, estado, total, created_at, nombre_invitado,
+            orden_items (
+              id, cantidad, precio_unitario,
+              productos (nombre)
+            )
+          `)
+          .eq('id', guestData.orderId)
+          .single();
+        
+        if (error || !order) {
+          localStorage.removeItem(`guest_order_${numeroMesa}`);
+          return;
+        }
+        
+        if (order.estado === 'entregado' || order.estado === 'cancelado') {
+          // Clear stored order if delivered or cancelled
+          localStorage.removeItem(`guest_order_${numeroMesa}`);
+          setPendingOrder(null);
+        } else {
+          setPendingOrder(order as unknown as PendingOrder);
+        }
+      } catch {
+        localStorage.removeItem(`guest_order_${numeroMesa}`);
+      }
+    };
+    
+    fetchPendingOrder();
+    
+    // Subscribe to real-time updates
+    const storedOrder = localStorage.getItem(`guest_order_${numeroMesa}`);
+    if (!storedOrder) return;
+    
+    let orderId: string;
+    try {
+      orderId = JSON.parse(storedOrder).orderId;
+    } catch {
+      return;
+    }
+    
+    const channel = supabase
+      .channel(`guest-order-${orderId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'ordenes',
+          filter: `id=eq.${orderId}`
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          if (updated.estado === 'entregado' || updated.estado === 'cancelado') {
+            localStorage.removeItem(`guest_order_${numeroMesa}`);
+            setPendingOrder(null);
+            if (updated.estado === 'entregado') {
+              toast.success('¡Tu pedido ha sido entregado!');
+            }
+          } else {
+            setPendingOrder(prev => prev ? { ...prev, estado: updated.estado } : null);
+            const config = ESTADO_CONFIG[updated.estado];
+            if (config) {
+              toast.info(`Tu pedido está: ${config.label}`);
+            }
+          }
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [numeroMesa]);
   const { data: categorias, isLoading: loadingCategorias } = useQuery({
     queryKey: ['menu-categorias'],
     queryFn: async () => {
@@ -473,6 +589,53 @@ export default function MenuMesa() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Pending Order Banner */}
+      {pendingOrder && (
+        <section className="bg-primary/10 border-b border-primary/20">
+          <div className="container py-4">
+            <Card className="border-primary/30 bg-background">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-3">
+                    {(() => {
+                      const config = ESTADO_CONFIG[pendingOrder.estado] || ESTADO_CONFIG.pendiente;
+                      const Icon = config.icon;
+                      return (
+                        <div className={`p-2 rounded-full ${config.bgColor}`}>
+                          <Icon className={`h-5 w-5 ${config.color}`} />
+                        </div>
+                      );
+                    })()}
+                    <div>
+                      <p className="font-semibold">Tu pedido está {ESTADO_CONFIG[pendingOrder.estado]?.label.toLowerCase() || 'en proceso'}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {pendingOrder.orden_items?.length || 0} producto(s) • S/ {Number(pendingOrder.total).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge className={`${ESTADO_CONFIG[pendingOrder.estado]?.bgColor || 'bg-muted'} ${ESTADO_CONFIG[pendingOrder.estado]?.color || 'text-foreground'}`}>
+                    {ESTADO_CONFIG[pendingOrder.estado]?.label || pendingOrder.estado}
+                  </Badge>
+                </div>
+                
+                {/* Order items preview */}
+                <div className="mt-3 pt-3 border-t text-sm text-muted-foreground">
+                  {pendingOrder.orden_items?.slice(0, 3).map((item, idx) => (
+                    <span key={item.id}>
+                      {idx > 0 && ' • '}
+                      {item.cantidad}x {item.productos?.nombre || 'Producto'}
+                    </span>
+                  ))}
+                  {(pendingOrder.orden_items?.length || 0) > 3 && (
+                    <span> y {pendingOrder.orden_items!.length - 3} más...</span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      )}
 
       {/* Hero */}
       <section className="relative py-8 bg-gradient-to-b from-secondary/50 to-background">

@@ -177,6 +177,15 @@ export default function CheckoutInvitado() {
 
       if (itemsError) throw itemsError;
 
+      // Save order to localStorage for tracking
+      const guestOrderData = {
+        orderId: order.id,
+        mesa: mesa,
+        nombre: nombre,
+        createdAt: new Date().toISOString()
+      };
+      localStorage.setItem(`guest_order_${mesa}`, JSON.stringify(guestOrderData));
+
       setOrderId(order.id);
       setStatus('confirmado');
       toast.success('¡Tu pedido ha sido enviado!');

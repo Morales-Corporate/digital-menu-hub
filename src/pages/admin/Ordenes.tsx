@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { 
   CheckCircle, Clock, Eye, RefreshCw, Image as ImageIcon, Truck, Package, 
   MapPin, Phone, User, Banknote, CreditCard, QrCode, XCircle, AlertTriangle,
-  DollarSign
+  DollarSign, UtensilsCrossed
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, differenceInMinutes, parseISO } from 'date-fns';
@@ -55,12 +55,13 @@ interface Order {
   orden_items: OrderItem[];
 }
 
-const ORDER_STATES = ['pendiente', 'confirmado', 'en_camino', 'entregado', 'cancelado'] as const;
+const ORDER_STATES = ['pendiente', 'confirmado', 'en_preparacion', 'en_camino', 'entregado', 'cancelado'] as const;
 type OrderState = typeof ORDER_STATES[number];
 
 const STATE_CONFIG: Record<OrderState, { label: string; icon: React.ElementType; color: string; bgColor: string; borderColor: string }> = {
   pendiente: { label: 'Pendiente', icon: Clock, color: 'text-amber-800', bgColor: 'bg-amber-100', borderColor: 'border-amber-300' },
   confirmado: { label: 'Confirmado', icon: CheckCircle, color: 'text-blue-800', bgColor: 'bg-blue-100', borderColor: 'border-blue-300' },
+  en_preparacion: { label: 'En Preparación', icon: UtensilsCrossed, color: 'text-orange-800', bgColor: 'bg-orange-100', borderColor: 'border-orange-300' },
   en_camino: { label: 'En Camino', icon: Truck, color: 'text-purple-800', bgColor: 'bg-purple-100', borderColor: 'border-purple-300' },
   entregado: { label: 'Entregado', icon: Package, color: 'text-green-800', bgColor: 'bg-green-100', borderColor: 'border-green-300' },
   cancelado: { label: 'Cancelado', icon: XCircle, color: 'text-red-800', bgColor: 'bg-red-100', borderColor: 'border-red-300' },
@@ -327,16 +328,25 @@ export default function Ordenes() {
     }
   };
 
-  const getNextStatus = (currentStatus: string): Exclude<OrderState, 'cancelado'> | null => {
+  const getNextStatus = (currentStatus: string, order: Order): Exclude<OrderState, 'cancelado'> | null => {
     if (currentStatus === 'cancelado') return null;
-    const validStates: Exclude<OrderState, 'cancelado'>[] = ['pendiente', 'confirmado', 'en_camino', 'entregado'];
+    
+    // Different flow for mesa orders vs delivery orders
+    const isMesaOrder = order.numero_mesa !== null;
+    
+    // Mesa: pendiente → confirmado → en_preparacion → entregado
+    // Delivery: pendiente → confirmado → en_camino → entregado
+    const validStates: Exclude<OrderState, 'cancelado'>[] = isMesaOrder
+      ? ['pendiente', 'confirmado', 'en_preparacion', 'entregado']
+      : ['pendiente', 'confirmado', 'en_camino', 'entregado'];
+    
     const currentIndex = validStates.indexOf(currentStatus as Exclude<OrderState, 'cancelado'>);
     if (currentIndex === -1 || currentIndex >= validStates.length - 1) return null;
     return validStates[currentIndex + 1];
   };
 
   const getNextStatusButton = (order: Order) => {
-    const nextStatus = getNextStatus(order.estado);
+    const nextStatus = getNextStatus(order.estado, order);
     if (!nextStatus) return null;
 
     const config = STATE_CONFIG[nextStatus as OrderState];
@@ -569,7 +579,7 @@ export default function Ordenes() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             {ORDER_STATES.map(state => {
               const config = STATE_CONFIG[state];
               const count = orders.filter(o => o.estado === state).length;
