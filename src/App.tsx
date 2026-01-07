@@ -13,10 +13,12 @@ import MisOrdenes from "@/pages/MisOrdenes";
 import Checkout from "@/pages/Checkout";
 import CompletarPerfil from "@/pages/CompletarPerfil";
 import EditarPerfil from "@/pages/EditarPerfil";
+import Recompensas from "@/pages/Recompensas";
 import AdminIndex from "@/pages/admin/AdminIndex";
 import Categorias from "@/pages/admin/Categorias";
 import Productos from "@/pages/admin/Productos";
 import Ordenes from "@/pages/admin/Ordenes";
+import RecompensasAdmin from "@/pages/admin/Recompensas";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -60,6 +62,11 @@ const App = () => (
                 <EditarPerfil />
               </ProtectedRoute>
             } />
+            <Route path="/recompensas" element={
+              <ProtectedRoute>
+                <Recompensas />
+              </ProtectedRoute>
+            } />
             
             {/* Admin routes - protected and require admin role */}
             <Route path="/admin" element={
@@ -80,6 +87,11 @@ const App = () => (
             <Route path="/admin/ordenes" element={
               <ProtectedRoute requireAdmin>
                 <Ordenes />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/recompensas" element={
+              <ProtectedRoute requireAdmin>
+                <RecompensasAdmin />
               </ProtectedRoute>
             } />
             

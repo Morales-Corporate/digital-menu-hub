@@ -35,6 +35,54 @@ export type Database = {
         }
         Relationships: []
       }
+      descuentos_activos: {
+        Row: {
+          created_at: string | null
+          id: string
+          orden_id: string | null
+          puntos_usados: number
+          recompensa_id: string
+          usado: boolean | null
+          usado_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          orden_id?: string | null
+          puntos_usados: number
+          recompensa_id: string
+          usado?: boolean | null
+          usado_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          orden_id?: string | null
+          puntos_usados?: number
+          recompensa_id?: string
+          usado?: boolean | null
+          usado_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "descuentos_activos_orden_id_fkey"
+            columns: ["orden_id"]
+            isOneToOne: false
+            referencedRelation: "ordenes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "descuentos_activos_recompensa_id_fkey"
+            columns: ["recompensa_id"]
+            isOneToOne: false
+            referencedRelation: "recompensas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orden_items: {
         Row: {
           cantidad: number
@@ -235,6 +283,36 @@ export type Database = {
           puntos_totales?: number
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      recompensas: {
+        Row: {
+          activo: boolean | null
+          created_at: string | null
+          id: string
+          nombre: string
+          porcentaje_descuento: number
+          puntos_requeridos: number
+          updated_at: string | null
+        }
+        Insert: {
+          activo?: boolean | null
+          created_at?: string | null
+          id?: string
+          nombre: string
+          porcentaje_descuento: number
+          puntos_requeridos: number
+          updated_at?: string | null
+        }
+        Update: {
+          activo?: boolean | null
+          created_at?: string | null
+          id?: string
+          nombre?: string
+          porcentaje_descuento?: number
+          puntos_requeridos?: number
+          updated_at?: string | null
         }
         Relationships: []
       }

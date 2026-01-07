@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,16 +8,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, CheckCircle, Clock, QrCode, Upload, Loader2, Banknote, CreditCard } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, CheckCircle, Clock, QrCode, Upload, Loader2, Banknote, CreditCard, Gift, Percent } from 'lucide-react';
 import { toast } from 'sonner';
 
 type OrderStatus = 'resumen' | 'metodo' | 'pago' | 'confirmando' | 'confirmado';
 type PaymentMethod = 'yape_plin' | 'efectivo' | 'tarjeta';
 
 export default function Checkout() {
-  const { items, total, clearCart } = useCart();
+  const { items, total: subtotal, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState<OrderStatus>('resumen');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -26,6 +29,28 @@ export default function Checkout() {
   const [isCheckingProfile, setIsCheckingProfile] = useState(true);
   const [montoPago, setMontoPago] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Obtener descuento activo del usuario
+  const { data: descuentoActivo } = useQuery({
+    queryKey: ['descuento-activo-checkout', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('descuentos_activos')
+        .select('*, recompensas(*)')
+        .eq('user_id', user.id)
+        .eq('usado', false)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Calcular descuento y total final
+  const descuentoPorcentaje = descuentoActivo?.recompensas?.porcentaje_descuento || 0;
+  const descuentoMonto = (subtotal * descuentoPorcentaje) / 100;
+  const total = subtotal - descuentoMonto;
 
   const vuelto = montoPago ? parseFloat(montoPago) - total : 0;
 
@@ -179,6 +204,25 @@ export default function Checkout() {
 
       if (itemsError) throw itemsError;
 
+      // Marcar descuento como usado si existe
+      if (descuentoActivo) {
+        const { error: updateDescuentoError } = await supabase
+          .from('descuentos_activos')
+          .update({ 
+            usado: true, 
+            orden_id: order.id,
+            usado_at: new Date().toISOString()
+          })
+          .eq('id', descuentoActivo.id);
+        
+        if (updateDescuentoError) {
+          console.error('Error updating discount:', updateDescuentoError);
+        }
+        
+        // Invalidar cache del descuento
+        queryClient.invalidateQueries({ queryKey: ['descuento-activo'] });
+      }
+
       setOrderId(order.id);
       setStatus('confirmando');
       clearCart();
@@ -252,10 +296,32 @@ export default function Checkout() {
                   <p className="font-medium">S/ {(item.precio * item.cantidad).toFixed(2)}</p>
                 </div>
               ))}
-              <div className="flex justify-between text-lg font-bold pt-4">
+              
+              {/* Subtotal */}
+              <div className="flex justify-between pt-2">
+                <span className="text-muted-foreground">Subtotal:</span>
+                <span>S/ {subtotal.toFixed(2)}</span>
+              </div>
+              
+              {/* Descuento activo */}
+              {descuentoActivo && (
+                <div className="flex justify-between items-center bg-green-50 dark:bg-green-950/30 p-3 rounded-lg border border-green-200 dark:border-green-800">
+                  <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                    <Percent className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      {descuentoActivo.recompensas?.nombre} ({descuentoPorcentaje}% OFF)
+                    </span>
+                  </div>
+                  <span className="text-green-600 font-semibold">-S/ {descuentoMonto.toFixed(2)}</span>
+                </div>
+              )}
+              
+              {/* Total */}
+              <div className="flex justify-between text-lg font-bold pt-2 border-t">
                 <span>Total:</span>
                 <span>S/ {total.toFixed(2)}</span>
               </div>
+              
               <div className="text-sm text-muted-foreground">
                 Ganarás <span className="font-semibold text-primary">{Math.floor(total)} puntos</span> con este pedido
               </div>
