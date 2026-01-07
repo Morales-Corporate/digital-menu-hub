@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      asignacion_mesas: {
+        Row: {
+          created_at: string | null
+          fecha: string
+          id: string
+          mesa_fin: number
+          mesa_inicio: number
+          mesero_id: string
+          turno: string
+        }
+        Insert: {
+          created_at?: string | null
+          fecha?: string
+          id?: string
+          mesa_fin: number
+          mesa_inicio: number
+          mesero_id: string
+          turno?: string
+        }
+        Update: {
+          created_at?: string | null
+          fecha?: string
+          id?: string
+          mesa_fin?: number
+          mesa_inicio?: number
+          mesero_id?: string
+          turno?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asignacion_mesas_mesero_id_fkey"
+            columns: ["mesero_id"]
+            isOneToOne: false
+            referencedRelation: "meseros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categorias: {
         Row: {
           created_at: string | null
@@ -122,6 +160,33 @@ export type Database = {
           },
         ]
       }
+      meseros: {
+        Row: {
+          activo: boolean | null
+          created_at: string | null
+          id: string
+          nombre: string
+          telefono: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          activo?: boolean | null
+          created_at?: string | null
+          id?: string
+          nombre: string
+          telefono?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          activo?: boolean | null
+          created_at?: string | null
+          id?: string
+          nombre?: string
+          telefono?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       movimientos_caja: {
         Row: {
           created_at: string
@@ -198,9 +263,11 @@ export type Database = {
         Row: {
           comprobante_pago: string | null
           created_at: string | null
+          entregado_at: string | null
           es_invitado: boolean | null
           estado: string
           id: string
+          mesero_id: string | null
           metodo_pago: string | null
           monto_pago: number | null
           motivo_cancelacion: string | null
@@ -214,9 +281,11 @@ export type Database = {
         Insert: {
           comprobante_pago?: string | null
           created_at?: string | null
+          entregado_at?: string | null
           es_invitado?: boolean | null
           estado?: string
           id?: string
+          mesero_id?: string | null
           metodo_pago?: string | null
           monto_pago?: number | null
           motivo_cancelacion?: string | null
@@ -230,9 +299,11 @@ export type Database = {
         Update: {
           comprobante_pago?: string | null
           created_at?: string | null
+          entregado_at?: string | null
           es_invitado?: boolean | null
           estado?: string
           id?: string
+          mesero_id?: string | null
           metodo_pago?: string | null
           monto_pago?: number | null
           motivo_cancelacion?: string | null
@@ -243,7 +314,15 @@ export type Database = {
           total?: number
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ordenes_mesero_id_fkey"
+            columns: ["mesero_id"]
+            isOneToOne: false
+            referencedRelation: "meseros"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       productos: {
         Row: {

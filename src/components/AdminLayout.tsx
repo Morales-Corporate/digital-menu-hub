@@ -15,7 +15,8 @@ import {
   Gift,
   Wallet,
   QrCode,
-  BarChart3
+  BarChart3,
+  Users
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -27,6 +28,7 @@ const navItems = [
   { href: '/admin/ordenes', label: 'Pedidos', icon: ClipboardList },
   { href: '/admin/estadisticas', label: 'Estadísticas', icon: BarChart3 },
   { href: '/admin/caja', label: 'Caja', icon: Wallet },
+  { href: '/admin/meseros', label: 'Meseros', icon: Users },
   { href: '/admin/mesas', label: 'Mesas QR', icon: QrCode },
   { href: '/admin/categorias', label: 'Categorías', icon: UtensilsCrossed },
   { href: '/admin/productos', label: 'Productos', icon: UtensilsCrossed },

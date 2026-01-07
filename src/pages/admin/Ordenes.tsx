@@ -10,14 +10,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   CheckCircle, Clock, Eye, RefreshCw, Image as ImageIcon, Truck, Package, 
   MapPin, Phone, User, Banknote, CreditCard, QrCode, XCircle, AlertTriangle,
-  DollarSign, UtensilsCrossed
+  DollarSign, UtensilsCrossed, Users
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, differenceInMinutes, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useQuery } from '@tanstack/react-query';
 
 interface OrderItem {
   id: string;
@@ -43,6 +45,8 @@ interface Order {
   nombre_invitado: string | null;
   telefono_invitado: string | null;
   numero_mesa: number | null;
+  mesero_id: string | null;
+  entregado_at: string | null;
   profiles: {
     full_name: string | null;
     email: string | null;
@@ -79,6 +83,23 @@ export default function Ordenes() {
   const [cancelReason, setCancelReason] = useState('');
   const [closedDates, setClosedDates] = useState<string[]>([]);
   const [, setCurrentTime] = useState(new Date());
+  const [meseroDialogOpen, setMeseroDialogOpen] = useState(false);
+  const [selectedOrderForMesero, setSelectedOrderForMesero] = useState<string | null>(null);
+  const [selectedMeseroId, setSelectedMeseroId] = useState<string>('');
+
+  // Fetch meseros activos
+  const { data: meseros = [] } = useQuery({
+    queryKey: ['meseros-activos'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('meseros')
+        .select('id, nombre')
+        .eq('activo', true)
+        .order('nombre');
+      if (error) throw error;
+      return data;
+    }
+  });
 
   // Update current time every minute to refresh wait time indicators
   useEffect(() => {
@@ -196,9 +217,15 @@ export default function Ordenes() {
         }
       }
 
+      // Build update object - include entregado_at if marking as delivered
+      const updateData: { estado: string; entregado_at?: string } = { estado: newStatus };
+      if (newStatus === 'entregado') {
+        updateData.entregado_at = new Date().toISOString();
+      }
+
       const { error } = await supabase
         .from('ordenes')
-        .update({ estado: newStatus })
+        .update(updateData)
         .eq('id', orderId);
 
       if (error) throw error;
@@ -268,6 +295,40 @@ export default function Ordenes() {
     setCancelOrderId(orderId);
     setCancelReason('');
     setShowCancelDialog(true);
+  };
+
+  const openMeseroDialog = (orderId: string, currentMeseroId: string | null) => {
+    setSelectedOrderForMesero(orderId);
+    setSelectedMeseroId(currentMeseroId || '');
+    setMeseroDialogOpen(true);
+  };
+
+  const handleAssignMesero = async () => {
+    if (!selectedOrderForMesero) return;
+    
+    try {
+      const { error } = await supabase
+        .from('ordenes')
+        .update({ mesero_id: selectedMeseroId || null })
+        .eq('id', selectedOrderForMesero);
+
+      if (error) throw error;
+
+      toast.success(selectedMeseroId ? 'Mesero asignado' : 'Mesero removido');
+      setMeseroDialogOpen(false);
+      setSelectedOrderForMesero(null);
+      setSelectedMeseroId('');
+      fetchOrders();
+    } catch (error: any) {
+      console.error('Error assigning mesero:', error);
+      toast.error('Error al asignar mesero');
+    }
+  };
+
+  const getMeseroName = (meseroId: string | null) => {
+    if (!meseroId) return null;
+    const mesero = meseros.find(m => m.id === meseroId);
+    return mesero?.nombre || null;
   };
 
   const handleViewReceipt = async (comprobantePath: string) => {
@@ -377,6 +438,7 @@ export default function Ordenes() {
         <TableRow>
           <TableHead>Orden</TableHead>
           <TableHead>Cliente</TableHead>
+          <TableHead>Mesero</TableHead>
           <TableHead>Fecha/Hora</TableHead>
           <TableHead>Pago</TableHead>
           <TableHead>Total</TableHead>
@@ -415,6 +477,31 @@ export default function Ordenes() {
                     </>
                   )}
                 </div>
+              </TableCell>
+              <TableCell>
+                {order.mesero_id ? (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-auto py-1 px-2 text-left"
+                    onClick={() => openMeseroDialog(order.id, order.mesero_id)}
+                  >
+                    <Users className="h-3 w-3 mr-1 text-primary" />
+                    <span className="text-sm">{getMeseroName(order.mesero_id)}</span>
+                  </Button>
+                ) : order.estado !== 'entregado' && order.estado !== 'cancelado' ? (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => openMeseroDialog(order.id, null)}
+                  >
+                    <Users className="h-3 w-3 mr-1" />
+                    Asignar
+                  </Button>
+                ) : (
+                  <span className="text-xs text-muted-foreground">-</span>
+                )}
               </TableCell>
               <TableCell>
                 <div>
@@ -677,6 +764,41 @@ export default function Ordenes() {
                 disabled={!cancelReason.trim()}
               >
                 Confirmar Cancelación
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Assign mesero dialog */}
+        <Dialog open={meseroDialogOpen} onOpenChange={setMeseroDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" /> Asignar Mesero
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Seleccionar Mesero</Label>
+                <Select value={selectedMeseroId} onValueChange={setSelectedMeseroId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar mesero" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Sin asignar</SelectItem>
+                    {meseros.map(m => (
+                      <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setMeseroDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleAssignMesero}>
+                Guardar
               </Button>
             </DialogFooter>
           </DialogContent>
