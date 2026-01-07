@@ -35,6 +35,45 @@ export type Database = {
         }
         Relationships: []
       }
+      cierres_caja: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          fecha: string
+          id: string
+          ordenes_canceladas: number
+          ordenes_entregadas: number
+          total_efectivo: number
+          total_tarjeta: number
+          total_ventas: number
+          total_yape_plin: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          fecha: string
+          id?: string
+          ordenes_canceladas?: number
+          ordenes_entregadas?: number
+          total_efectivo?: number
+          total_tarjeta?: number
+          total_ventas?: number
+          total_yape_plin?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          fecha?: string
+          id?: string
+          ordenes_canceladas?: number
+          ordenes_entregadas?: number
+          total_efectivo?: number
+          total_tarjeta?: number
+          total_ventas?: number
+          total_yape_plin?: number
+        }
+        Relationships: []
+      }
       descuentos_activos: {
         Row: {
           created_at: string | null
@@ -82,6 +121,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      movimientos_caja: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          fecha: string
+          id: string
+          monto: number
+          motivo: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          fecha?: string
+          id?: string
+          monto: number
+          motivo: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          fecha?: string
+          id?: string
+          monto?: number
+          motivo?: string
+          tipo?: string
+        }
+        Relationships: []
       }
       orden_items: {
         Row: {
