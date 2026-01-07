@@ -22,6 +22,7 @@ import Productos from "@/pages/admin/Productos";
 import Ordenes from "@/pages/admin/Ordenes";
 import Caja from "@/pages/admin/Caja";
 import Mesas from "@/pages/admin/Mesas";
+import Meseros from "@/pages/admin/Meseros";
 import RecompensasAdmin from "@/pages/admin/Recompensas";
 import Estadisticas from "@/pages/admin/Estadisticas";
 import NotFound from "@/pages/NotFound";
@@ -115,6 +116,11 @@ const App = () => (
             <Route path="/admin/estadisticas" element={
               <ProtectedRoute requireAdmin>
                 <Estadisticas />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/meseros" element={
+              <ProtectedRoute requireAdmin>
+                <Meseros />
               </ProtectedRoute>
             } />
             
