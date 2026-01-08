@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, CheckCircle, Clock, QrCode, Upload, Loader2, Banknote, CreditCard, Gift, Percent, UtensilsCrossed } from 'lucide-react';
 import { toast } from 'sonner';
@@ -46,6 +47,7 @@ export default function Checkout() {
   const [isUploading, setIsUploading] = useState(false);
   const [isCheckingProfile, setIsCheckingProfile] = useState(true);
   const [montoPago, setMontoPago] = useState<string>('');
+  const [pagoExacto, setPagoExacto] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Obtener descuento activo del usuario
@@ -71,6 +73,13 @@ export default function Checkout() {
   const total = subtotal - descuentoMonto;
 
   const vuelto = montoPago ? parseFloat(montoPago) - total : 0;
+
+  // Si el cliente marca "pago exacto", mantenemos montoPago = total
+  useEffect(() => {
+    if (paymentMethod === 'efectivo' && pagoExacto) {
+      setMontoPago(total.toFixed(2));
+    }
+  }, [paymentMethod, pagoExacto, total]);
 
   // Check if user profile is complete before allowing checkout
   useEffect(() => {
@@ -133,6 +142,13 @@ export default function Checkout() {
   const handleSelectPaymentMethod = (method: PaymentMethod) => {
     setPaymentMethod(method);
     setStatus('pago');
+
+    if (method === 'efectivo') {
+      setPagoExacto(true);
+      setMontoPago(total.toFixed(2));
+    } else {
+      setMontoPago('');
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,8 +182,8 @@ export default function Checkout() {
     }
 
     if (paymentMethod === 'efectivo') {
-      const montoNumerico = parseFloat(montoPago);
-      if (!montoPago || isNaN(montoNumerico) || montoNumerico < total) {
+      const montoNumerico = pagoExacto ? total : parseFloat(montoPago);
+      if (!pagoExacto && (!montoPago || isNaN(montoNumerico) || montoNumerico < total)) {
         toast.error('El monto debe ser igual o mayor al total');
         return;
       }
@@ -201,7 +217,7 @@ export default function Checkout() {
           metodo_pago: paymentMethod,
           puntos_ganados: Math.floor(total),
           comprobante_pago: comprobantePath,
-          monto_pago: paymentMethod === 'efectivo' ? parseFloat(montoPago) : null,
+          monto_pago: paymentMethod === 'efectivo' ? (pagoExacto ? total : parseFloat(montoPago)) : null,
           numero_mesa: numeroMesa,
           es_invitado: false
         })
@@ -515,25 +531,47 @@ export default function Checkout() {
                 <p className="text-center text-2xl font-bold text-green-600">S/ {total.toFixed(2)}</p>
               </div>
 
-              <div className="space-y-3">
-                <Label htmlFor="montoPago">¿Con cuánto pagarás?</Label>
-                <Input
-                  id="montoPago"
-                  type="number"
-                  placeholder="Ej: 50.00"
-                  value={montoPago}
-                  onChange={(e) => setMontoPago(e.target.value)}
-                  min={total}
-                  step="0.01"
-                />
-                {montoPago && parseFloat(montoPago) >= total && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="pagoExacto"
+                    checked={pagoExacto}
+                    onCheckedChange={(checked) => {
+                      const isChecked = checked === true;
+                      setPagoExacto(isChecked);
+                      setMontoPago(isChecked ? total.toFixed(2) : '');
+                    }}
+                  />
+                  <Label htmlFor="pagoExacto">Pago exacto</Label>
+                </div>
+
+                {pagoExacto ? (
                   <div className="bg-muted p-3 rounded-lg text-center">
-                    <p className="text-sm text-muted-foreground">Tu vuelto será:</p>
-                    <p className="text-xl font-bold text-primary">S/ {vuelto.toFixed(2)}</p>
+                    <p className="text-sm text-muted-foreground">Pagas exacto:</p>
+                    <p className="text-xl font-bold text-primary">S/ {total.toFixed(2)}</p>
                   </div>
-                )}
-                {montoPago && parseFloat(montoPago) < total && (
-                  <p className="text-sm text-destructive">El monto debe ser igual o mayor al total</p>
+                ) : (
+                  <div className="space-y-3">
+                    <Label htmlFor="montoPago">¿Con cuánto pagarás?</Label>
+                    <Input
+                      id="montoPago"
+                      type="number"
+                      placeholder="Ej: 50.00"
+                      value={montoPago}
+                      onChange={(e) => setMontoPago(e.target.value)}
+                      min={total}
+                      step="0.01"
+                    />
+                    {montoPago && parseFloat(montoPago) >= total && (
+                      <div className="bg-muted p-3 rounded-lg text-center">
+                        <p className="text-sm text-muted-foreground">Tu vuelto será:</p>
+                        <p className="text-xl font-bold text-primary">S/ {vuelto.toFixed(2)}</p>
+                      </div>
+                    )}
+                    {montoPago && parseFloat(montoPago) < total && (
+                      <p className="text-sm text-destructive">El monto debe ser igual o mayor al total</p>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -541,7 +579,7 @@ export default function Checkout() {
                 className="w-full" 
                 size="lg" 
                 onClick={handleConfirmPayment}
-                disabled={!montoPago || parseFloat(montoPago) < total || isUploading}
+                disabled={(!pagoExacto && (!montoPago || parseFloat(montoPago) < total)) || isUploading}
               >
                 {isUploading ? (
                   <>
