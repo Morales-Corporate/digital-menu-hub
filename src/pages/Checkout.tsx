@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 interface LocationState {
   items?: { id: string; nombre: string; precio: number; cantidad: number; imagen_url?: string | null }[];
   mesa?: number;
+  mesaCodigo?: string;
 }
 
 type OrderStatus = 'resumen' | 'metodo' | 'pago' | 'confirmando' | 'confirmado';
