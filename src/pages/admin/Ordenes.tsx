@@ -449,13 +449,17 @@ export default function Ordenes() {
     );
   };
 
-  // Filter orders: hide ALL orders from closed dates
+  // Filter orders: show ONLY today's orders (and hide dates already closed)
   const filteredOrders = orders.filter(order => {
     const orderDate = format(parseISO(order.created_at), 'yyyy-MM-dd');
+    const today = format(new Date(), 'yyyy-MM-dd');
+
+    // Only show today's orders in Gestión de Pedidos
+    if (orderDate !== today) return false;
+
     // Hide all orders from dates that have been closed
-    if (closedDates.includes(orderDate)) {
-      return false;
-    }
+    if (closedDates.includes(orderDate)) return false;
+
     return order.estado === activeTab;
   });
 
