@@ -28,6 +28,7 @@ interface CartItem {
 type AuthMode = 'login' | 'register';
 
 // Decodifica el código para obtener el número de mesa
+// IMPORTANTE: Solo acepta códigos seguros, NO números simples
 const decodeMesaCode = (code: string): number | null => {
   // Función para generar código (debe coincidir con Mesas.tsx)
   const generateMesaCode = (numeroMesa: number, secret: string = 'restaurante2024'): string => {
@@ -43,11 +44,8 @@ const decodeMesaCode = (code: string): number | null => {
   };
 
   try {
-    // Primero intentar como número simple (compatibilidad hacia atrás)
-    const simpleNumber = parseInt(code, 10);
-    if (!isNaN(simpleNumber) && simpleNumber > 0 && simpleNumber <= 100) {
-      return simpleNumber;
-    }
+    // Solo aceptar códigos seguros (mínimo 7 caracteres: 6 hash + 1 número base36)
+    if (!code || code.length < 7) return null;
     
     // Intentar decodificar código seguro
     const mesaPart = code.substring(6);
@@ -314,7 +312,8 @@ export default function MenuMesa() {
       navigate('/checkout', { 
         state: { 
           items: cart, 
-          mesa: numeroMesa 
+          mesa: numeroMesa,
+          mesaCodigo: codigoMesa // Pasar el código para poder volver
         } 
       });
     } else {
@@ -328,7 +327,8 @@ export default function MenuMesa() {
     navigate('/checkout-invitado', { 
       state: { 
         items: cart, 
-        mesa: numeroMesa 
+        mesa: numeroMesa,
+        mesaCodigo: codigoMesa // Pasar el código para poder volver
       } 
     });
   };

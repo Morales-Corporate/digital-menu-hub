@@ -31,7 +31,7 @@ const guestSchema = z.object({
 export default function CheckoutInvitado() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { items, mesa } = (location.state as { items: CartItem[]; mesa: number }) || { items: [], mesa: 0 };
+  const { items, mesa, mesaCodigo } = (location.state as { items: CartItem[]; mesa: number; mesaCodigo?: string }) || { items: [], mesa: 0, mesaCodigo: '' };
   
   const [status, setStatus] = useState<OrderStatus>('datos');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
@@ -70,7 +70,7 @@ export default function CheckoutInvitado() {
             <p className="text-muted-foreground mb-4">
               Parece que no hay productos en tu pedido.
             </p>
-            <Button onClick={() => navigate(`/mesa/${mesa}`)}>
+            <Button onClick={() => navigate(mesaCodigo ? `/mesa/${mesaCodigo}` : '/')}>
               Volver al menú
             </Button>
           </CardContent>
@@ -230,7 +230,7 @@ export default function CheckoutInvitado() {
           <Button variant="ghost" onClick={() => {
             if (status === 'pago') setStatus('metodo');
             else if (status === 'metodo') setStatus('datos');
-            else navigate(`/mesa/${mesa}`);
+            else navigate(mesaCodigo ? `/mesa/${mesaCodigo}` : '/');
           }} className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" /> Volver
           </Button>
