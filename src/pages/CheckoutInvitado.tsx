@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeft, CheckCircle, QrCode, Upload, Loader2, Banknote, CreditCard, User, Phone, UtensilsCrossed } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -46,10 +47,17 @@ export default function CheckoutInvitado() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const [montoPago, setMontoPago] = useState('');
+  const [pagoExacto, setPagoExacto] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const total = items.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
   const vuelto = montoPago ? parseFloat(montoPago) - total : 0;
+
+  useEffect(() => {
+    if (paymentMethod === 'efectivo' && pagoExacto) {
+      setMontoPago(total.toFixed(2));
+    }
+  }, [paymentMethod, pagoExacto, total]);
 
   // Redirect if no items
   if (items.length === 0) {
@@ -89,6 +97,13 @@ export default function CheckoutInvitado() {
   const handleSelectPaymentMethod = (method: PaymentMethod) => {
     setPaymentMethod(method);
     setStatus('pago');
+
+    if (method === 'efectivo') {
+      setPagoExacto(true);
+      setMontoPago(total.toFixed(2));
+    } else {
+      setMontoPago('');
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,8 +132,8 @@ export default function CheckoutInvitado() {
     }
 
     if (paymentMethod === 'efectivo') {
-      const montoNumerico = parseFloat(montoPago);
-      if (!montoPago || isNaN(montoNumerico) || montoNumerico < total) {
+      const montoNumerico = pagoExacto ? total : parseFloat(montoPago);
+      if (!pagoExacto && (!montoPago || isNaN(montoNumerico) || montoNumerico < total)) {
         toast.error('El monto debe ser igual o mayor al total');
         return;
       }
@@ -152,7 +167,7 @@ export default function CheckoutInvitado() {
           metodo_pago: paymentMethod,
           puntos_ganados: 0, // Guests don't earn points
           comprobante_pago: comprobantePath,
-          monto_pago: paymentMethod === 'efectivo' ? parseFloat(montoPago) : null,
+          monto_pago: paymentMethod === 'efectivo' ? (pagoExacto ? total : parseFloat(montoPago)) : null,
           es_invitado: true,
           nombre_invitado: nombre,
           telefono_invitado: telefono || null,
@@ -430,20 +445,44 @@ export default function CheckoutInvitado() {
                 <p className="text-center text-2xl font-bold text-green-600">S/ {total.toFixed(2)}</p>
               </div>
 
-              <div className="space-y-3">
-                <Label htmlFor="montoPago">¿Con cuánto pagarás?</Label>
-                <Input
-                  id="montoPago"
-                  type="number"
-                  placeholder={`Mínimo S/ ${total.toFixed(2)}`}
-                  value={montoPago}
-                  onChange={(e) => setMontoPago(e.target.value)}
-                />
-                {vuelto > 0 && (
-                  <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-sm text-muted-foreground">
-                      Tu vuelto será: <span className="font-semibold text-foreground">S/ {vuelto.toFixed(2)}</span>
-                    </p>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="pagoExacto"
+                    checked={pagoExacto}
+                    onCheckedChange={(checked) => {
+                      const isChecked = checked === true;
+                      setPagoExacto(isChecked);
+                      setMontoPago(isChecked ? total.toFixed(2) : '');
+                    }}
+                  />
+                  <Label htmlFor="pagoExacto">Pago exacto</Label>
+                </div>
+
+                {pagoExacto ? (
+                  <div className="bg-muted p-3 rounded-lg text-center">
+                    <p className="text-sm text-muted-foreground">Pagas exacto:</p>
+                    <p className="text-xl font-bold text-foreground">S/ {total.toFixed(2)}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <Label htmlFor="montoPago">¿Con cuánto pagarás?</Label>
+                    <Input
+                      id="montoPago"
+                      type="number"
+                      placeholder={`Mínimo S/ ${total.toFixed(2)}`}
+                      value={montoPago}
+                      onChange={(e) => setMontoPago(e.target.value)}
+                      min={total}
+                      step="0.01"
+                    />
+                    {vuelto > 0 && (
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="text-sm text-muted-foreground">
+                          Tu vuelto será: <span className="font-semibold text-foreground">S/ {vuelto.toFixed(2)}</span>
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -452,7 +491,7 @@ export default function CheckoutInvitado() {
                 className="w-full" 
                 size="lg" 
                 onClick={handleConfirmPayment}
-                disabled={isSubmitting || !montoPago || parseFloat(montoPago) < total}
+                disabled={isSubmitting || (!pagoExacto && (!montoPago || parseFloat(montoPago) < total))}
               >
                 {isSubmitting ? (
                   <>

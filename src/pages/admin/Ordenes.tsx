@@ -449,19 +449,27 @@ export default function Ordenes() {
     );
   };
 
-  // Filter orders: show ONLY today's orders (and hide dates already closed)
-  const filteredOrders = orders.filter(order => {
-    const orderDate = format(parseISO(order.created_at), 'yyyy-MM-dd');
-    const today = format(new Date(), 'yyyy-MM-dd');
+  const getDateKeyLima = (date: string | Date) => {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Lima',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(d);
+  };
 
-    // Only show today's orders in Gestión de Pedidos
-    if (orderDate !== today) return false;
+  const todayKey = getDateKeyLima(new Date());
 
-    // Hide all orders from dates that have been closed
-    if (closedDates.includes(orderDate)) return false;
-
-    return order.estado === activeTab;
+  // Pedidos visibles en Gestión (solo HOY, y no mostrar si hoy ya tuvo cierre)
+  const visibleOrders = orders.filter((order) => {
+    const orderDateKey = getDateKeyLima(order.created_at);
+    if (orderDateKey !== todayKey) return false;
+    if (closedDates.includes(orderDateKey)) return false;
+    return true;
   });
+
+  const filteredOrders = visibleOrders.filter((order) => order.estado === activeTab);
 
   const OrderTable = ({ orders }: { orders: Order[] }) => (
     <Table>
@@ -711,7 +719,7 @@ export default function Ordenes() {
           <TabsList className="grid w-full grid-cols-6">
             {ORDER_STATES.map(state => {
               const config = STATE_CONFIG[state];
-              const count = orders.filter(o => o.estado === state).length;
+              const count = visibleOrders.filter(o => o.estado === state).length;
               return (
                 <TabsTrigger key={state} value={state} className="relative text-xs sm:text-sm">
                   <span className="hidden sm:inline">{config.label}</span>
