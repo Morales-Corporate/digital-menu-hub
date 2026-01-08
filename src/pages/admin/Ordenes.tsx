@@ -704,15 +704,54 @@ export default function Ordenes() {
     </Table>
   );
 
+  // Calculate today's summary from visibleOrders
+  const todaySales = visibleOrders
+    .filter(o => o.estado === 'entregado')
+    .reduce((sum, o) => sum + o.total, 0);
+  const todayEntregados = visibleOrders.filter(o => o.estado === 'entregado').length;
+  const todayPendientes = visibleOrders.filter(o => o.estado === 'pendiente').length;
+
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center flex-wrap gap-4">
-          <h1 className="text-2xl font-bold">Gestión de Pedidos</h1>
-          <Button variant="outline" onClick={fetchOrders} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Actualizar
-          </Button>
+        {/* Header con resumen del día */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Gestión de Pedidos</h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              {format(new Date(), "EEEE, d 'de' MMMM yyyy", { locale: es })}
+            </p>
+          </div>
+          
+          {/* Mini resumen inline */}
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            <div className="flex items-center gap-2 bg-primary/10 px-3 py-2 rounded-lg">
+              <DollarSign className="h-4 w-4 text-primary" />
+              <div>
+                <p className="text-[10px] text-muted-foreground leading-none">Ventas Hoy</p>
+                <p className="text-sm font-bold">S/ {todaySales.toFixed(2)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 bg-green-100 px-3 py-2 rounded-lg">
+              <Package className="h-4 w-4 text-green-600" />
+              <div>
+                <p className="text-[10px] text-muted-foreground leading-none">Entregados</p>
+                <p className="text-sm font-bold">{todayEntregados}</p>
+              </div>
+            </div>
+            {todayPendientes > 0 && (
+              <div className="flex items-center gap-2 bg-amber-100 px-3 py-2 rounded-lg animate-pulse">
+                <Clock className="h-4 w-4 text-amber-600" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground leading-none">Pendientes</p>
+                  <p className="text-sm font-bold text-amber-800">{todayPendientes}</p>
+                </div>
+              </div>
+            )}
+            <Button variant="outline" size="sm" onClick={fetchOrders} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
