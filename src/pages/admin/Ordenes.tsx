@@ -101,6 +101,33 @@ export default function Ordenes() {
     }
   });
 
+  // Fetch asignaciones de mesas de hoy
+  const { data: asignacionesHoy = [] } = useQuery({
+    queryKey: ['asignaciones-hoy'],
+    queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const currentHour = new Date().getHours();
+      const turno = currentHour < 16 ? 'dia' : 'noche';
+      
+      const { data, error } = await supabase
+        .from('asignacion_mesas')
+        .select('*, meseros(nombre)')
+        .eq('fecha', today)
+        .eq('turno', turno);
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Helper to get mesero assigned to a table
+  const getMeseroForMesa = (numeroMesa: number | null) => {
+    if (!numeroMesa) return null;
+    const asignacion = asignacionesHoy.find(
+      a => numeroMesa >= a.mesa_inicio && numeroMesa <= a.mesa_fin
+    );
+    return asignacion ? { id: asignacion.mesero_id, nombre: asignacion.meseros?.nombre } : null;
+  };
+
   // Update current time every minute to refresh wait time indicators
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -307,14 +334,16 @@ export default function Ordenes() {
     if (!selectedOrderForMesero) return;
     
     try {
+      const meseroIdToSave = selectedMeseroId === 'none' ? null : selectedMeseroId || null;
+      
       const { error } = await supabase
         .from('ordenes')
-        .update({ mesero_id: selectedMeseroId || null })
+        .update({ mesero_id: meseroIdToSave })
         .eq('id', selectedOrderForMesero);
 
       if (error) throw error;
 
-      toast.success(selectedMeseroId ? 'Mesero asignado' : 'Mesero removido');
+      toast.success(meseroIdToSave ? 'Mesero asignado' : 'Mesero removido');
       setMeseroDialogOpen(false);
       setSelectedOrderForMesero(null);
       setSelectedMeseroId('');
@@ -479,29 +508,40 @@ export default function Ordenes() {
                 </div>
               </TableCell>
               <TableCell>
-                {order.mesero_id ? (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-auto py-1 px-2 text-left"
-                    onClick={() => openMeseroDialog(order.id, order.mesero_id)}
-                  >
-                    <Users className="h-3 w-3 mr-1 text-primary" />
-                    <span className="text-sm">{getMeseroName(order.mesero_id)}</span>
-                  </Button>
-                ) : order.estado !== 'entregado' && order.estado !== 'cancelado' ? (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="text-xs"
-                    onClick={() => openMeseroDialog(order.id, null)}
-                  >
-                    <Users className="h-3 w-3 mr-1" />
-                    Asignar
-                  </Button>
-                ) : (
-                  <span className="text-xs text-muted-foreground">-</span>
-                )}
+                {(() => {
+                  const meseroAsignado = getMeseroName(order.mesero_id);
+                  const meseroMesa = order.numero_mesa ? getMeseroForMesa(order.numero_mesa) : null;
+                  const displayMesero = meseroAsignado || meseroMesa?.nombre;
+                  const isAutoAssigned = !order.mesero_id && meseroMesa;
+                  
+                  if (displayMesero) {
+                    return (
+                      <div className="flex items-center gap-1">
+                        <Users className="h-3 w-3 text-primary" />
+                        <span className="text-sm">{displayMesero}</span>
+                        {isAutoAssigned && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0">Auto</Badge>
+                        )}
+                      </div>
+                    );
+                  }
+                  
+                  if (order.estado !== 'entregado' && order.estado !== 'cancelado' && meseros.length > 0) {
+                    return (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => openMeseroDialog(order.id, null)}
+                      >
+                        <Users className="h-3 w-3 mr-1" />
+                        Asignar
+                      </Button>
+                    );
+                  }
+                  
+                  return <span className="text-xs text-muted-foreground">-</span>;
+                })()}
               </TableCell>
               <TableCell>
                 <div>
@@ -785,7 +825,7 @@ export default function Ordenes() {
                     <SelectValue placeholder="Seleccionar mesero" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin asignar</SelectItem>
+                    <SelectItem value="none">Sin asignar</SelectItem>
                     {meseros.map(m => (
                       <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>
                     ))}
