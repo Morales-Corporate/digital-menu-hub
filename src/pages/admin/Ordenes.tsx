@@ -449,14 +449,12 @@ export default function Ordenes() {
     );
   };
 
-  // Filter orders: hide entregado/cancelado from closed dates
+  // Filter orders: hide ALL orders from closed dates
   const filteredOrders = orders.filter(order => {
-    // For entregado and cancelado, hide if their date has been closed
-    if (order.estado === 'entregado' || order.estado === 'cancelado') {
-      const orderDate = format(parseISO(order.created_at), 'yyyy-MM-dd');
-      if (closedDates.includes(orderDate)) {
-        return false;
-      }
+    const orderDate = format(parseISO(order.created_at), 'yyyy-MM-dd');
+    // Hide all orders from dates that have been closed
+    if (closedDates.includes(orderDate)) {
+      return false;
     }
     return order.estado === activeTab;
   });
