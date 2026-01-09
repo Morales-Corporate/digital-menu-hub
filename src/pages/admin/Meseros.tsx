@@ -47,7 +47,7 @@ export default function Meseros() {
   const [editingMesero, setEditingMesero] = useState<Mesero | null>(null);
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
-  const [periodoStats, setPeriodoStats] = useState('7');
+  const [periodoStats, setPeriodoStats] = useState('0');
 
   // Asignación state
   const [selectedMesero, setSelectedMesero] = useState('');
@@ -83,14 +83,25 @@ export default function Meseros() {
   const { data: estadisticas = [] } = useQuery({
     queryKey: ['estadisticas-meseros', periodoStats],
     queryFn: async () => {
-      const fechaInicio = format(subDays(new Date(), parseInt(periodoStats)), 'yyyy-MM-dd');
+      const hoy = format(new Date(), 'yyyy-MM-dd');
+      const fechaInicio = periodoStats === '0' 
+        ? hoy 
+        : format(subDays(new Date(), parseInt(periodoStats)), 'yyyy-MM-dd');
       
-      const { data: ordenes, error } = await supabase
+      let query = supabase
         .from('ordenes')
         .select('id, mesero_id, total, created_at, entregado_at, estado')
-        .gte('created_at', fechaInicio)
         .eq('estado', 'entregado')
         .not('mesero_id', 'is', null);
+      
+      if (periodoStats === '0') {
+        // Filtrar solo órdenes de hoy
+        query = query.gte('created_at', `${hoy}T00:00:00`).lt('created_at', `${hoy}T23:59:59.999`);
+      } else {
+        query = query.gte('created_at', fechaInicio);
+      }
+      
+      const { data: ordenes, error } = await query;
       
       if (error) throw error;
 
@@ -370,10 +381,11 @@ export default function Meseros() {
               Rendimiento de Meseros
             </CardTitle>
             <Select value={periodoStats} onValueChange={setPeriodoStats}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[150px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="0">Hoy</SelectItem>
                 <SelectItem value="7">Últimos 7 días</SelectItem>
                 <SelectItem value="15">Últimos 15 días</SelectItem>
                 <SelectItem value="30">Últimos 30 días</SelectItem>
