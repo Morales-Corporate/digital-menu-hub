@@ -208,6 +208,23 @@ export default function Checkout() {
         comprobantePath = fileName;
       }
 
+      // Buscar mesero asignado a esta mesa para hoy
+      let meseroId: string | null = null;
+      if (numeroMesa) {
+        const hoy = new Date().toISOString().split('T')[0];
+        const { data: asignacion } = await supabase
+          .from('asignacion_mesas')
+          .select('mesero_id')
+          .eq('fecha', hoy)
+          .gte('mesa_fin', numeroMesa)
+          .lte('mesa_inicio', numeroMesa)
+          .maybeSingle();
+        
+        if (asignacion) {
+          meseroId = asignacion.mesero_id;
+        }
+      }
+
       // Create order
       const { data: order, error: orderError } = await supabase
         .from('ordenes')
@@ -220,7 +237,8 @@ export default function Checkout() {
           comprobante_pago: comprobantePath,
           monto_pago: paymentMethod === 'efectivo' ? (pagoExacto ? total : parseFloat(montoPago)) : null,
           numero_mesa: numeroMesa,
-          es_invitado: false
+          es_invitado: false,
+          mesero_id: meseroId
         })
         .select()
         .single();
