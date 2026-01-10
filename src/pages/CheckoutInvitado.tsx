@@ -601,7 +601,9 @@ export default function CheckoutInvitado() {
               <Button 
                 className="w-full mt-6" 
                 variant="outline"
-                onClick={() => navigate(`/mesa/${mesa}`)}
+                onClick={() => navigate(mesaCodigo ? `/mesa/${mesaCodigo}` : `/`, { 
+                  state: { lastOrderId: orderId, lastOrderNumber: getOrderNumber(orderId) } 
+                })}
               >
                 Hacer otro pedido
               </Button>
