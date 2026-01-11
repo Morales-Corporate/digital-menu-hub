@@ -7,12 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, UtensilsCrossed, Plus, ShoppingCart, Minus, X, User, LogIn, UserPlus, Clock, CheckCircle, ChefHat, Package } from 'lucide-react';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Loader2, UtensilsCrossed, Plus, ShoppingCart, Minus, X, User, LogIn, UserPlus, Clock, CheckCircle, ChefHat, Package, Search, Star, ArrowUpDown, ChevronRight } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 type Producto = Tables<'productos'>;
 type Categoria = Tables<'categorias'>;
@@ -26,11 +29,10 @@ interface CartItem {
 }
 
 type AuthMode = 'login' | 'register';
+type SortOption = 'nombre' | 'precio-asc' | 'precio-desc';
 
 // Decodifica el código para obtener el número de mesa
-// IMPORTANTE: Solo acepta códigos seguros, NO números simples
 const decodeMesaCode = (code: string): number | null => {
-  // Función para generar código (debe coincidir con Mesas.tsx)
   const generateMesaCode = (numeroMesa: number, secret: string = 'restaurante2024'): string => {
     const str = `${secret}-mesa-${numeroMesa}`;
     let hash = 0;
@@ -44,14 +46,10 @@ const decodeMesaCode = (code: string): number | null => {
   };
 
   try {
-    // Solo aceptar códigos seguros (mínimo 7 caracteres: 6 hash + 1 número base36)
     if (!code || code.length < 7) return null;
-    
-    // Intentar decodificar código seguro
     const mesaPart = code.substring(6);
     const numeroMesa = parseInt(mesaPart, 36);
     if (isNaN(numeroMesa) || numeroMesa <= 0) return null;
-    
     const expectedCode = generateMesaCode(numeroMesa);
     if (expectedCode === code) {
       return numeroMesa;
@@ -90,6 +88,54 @@ const ESTADO_CONFIG: Record<string, { label: string; icon: React.ElementType; co
   entregado: { label: 'Entregado', icon: Package, color: 'text-green-700', bgColor: 'bg-green-100' },
 };
 
+// Compact product card for horizontal scroll
+function ProductCardCompact({ producto, onAdd, cartQty }: { producto: Producto; onAdd: () => void; cartQty: number }) {
+  return (
+    <div className="w-[140px] flex-shrink-0 snap-start">
+      <Card className="overflow-hidden h-full">
+        <div className="aspect-square relative">
+          {producto.imagen_url ? (
+            <img
+              src={producto.imagen_url}
+              alt={producto.nombre}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-muted flex items-center justify-center">
+              <UtensilsCrossed className="h-8 w-8 text-muted-foreground" />
+            </div>
+          )}
+          {producto.stock !== null && producto.stock <= 5 && (
+            <Badge className="absolute top-1 right-1 text-[10px] px-1 py-0 bg-orange-500">
+              Últimos {producto.stock}
+            </Badge>
+          )}
+          {cartQty > 0 && (
+            <Badge className="absolute top-1 left-1 text-[10px] px-1.5 py-0.5 bg-primary">
+              {cartQty}
+            </Badge>
+          )}
+        </div>
+        <CardContent className="p-2">
+          <h3 className="font-medium text-xs line-clamp-2 mb-1 leading-tight">{producto.nombre}</h3>
+          <div className="flex justify-between items-center gap-1">
+            <span className="font-bold text-primary text-sm">
+              S/ {Number(producto.precio).toFixed(2)}
+            </span>
+            <Button 
+              size="icon"
+              className="h-7 w-7 rounded-full"
+              onClick={onAdd}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function MenuMesa() {
   const { numero: codigoMesa } = useParams<{ numero: string }>();
   const navigate = useNavigate();
@@ -104,6 +150,13 @@ export default function MenuMesa() {
   const [authError, setAuthError] = useState('');
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [pendingOrder, setPendingOrder] = useState<PendingOrder | null>(null);
+  
+  // New state for enhanced navigation
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOption, setSortOption] = useState<SortOption>('nombre');
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const categoryRefs = useRef<Record<string, HTMLElement | null>>({});
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
   
   const numeroMesa = useMemo(() => {
     return decodeMesaCode(codigoMesa || '');
@@ -120,7 +173,6 @@ export default function MenuMesa() {
       try {
         const guestData: GuestOrderData = JSON.parse(storedOrder);
         
-        // Check if order is still pending (not entregado or cancelado)
         const { data: order, error } = await supabase
           .from('ordenes')
           .select(`
@@ -139,7 +191,6 @@ export default function MenuMesa() {
         }
         
         if (order.estado === 'entregado' || order.estado === 'cancelado') {
-          // Clear stored order if delivered or cancelled
           localStorage.removeItem(`guest_order_${numeroMesa}`);
           setPendingOrder(null);
         } else {
@@ -152,7 +203,6 @@ export default function MenuMesa() {
     
     fetchPendingOrder();
     
-    // Subscribe to real-time updates
     const storedOrder = localStorage.getItem(`guest_order_${numeroMesa}`);
     if (!storedOrder) return;
     
@@ -196,6 +246,7 @@ export default function MenuMesa() {
       supabase.removeChannel(channel);
     };
   }, [numeroMesa]);
+
   const { data: categorias, isLoading: loadingCategorias } = useQuery({
     queryKey: ['menu-categorias'],
     queryFn: async () => {
@@ -222,10 +273,85 @@ export default function MenuMesa() {
     },
   });
 
+  // Fetch popular products (most ordered)
+  const { data: popularProductIds } = useQuery({
+    queryKey: ['productos-populares'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('orden_items')
+        .select('producto_id, cantidad')
+        .not('producto_id', 'is', null);
+      
+      if (error) throw error;
+      
+      // Aggregate quantities by product
+      const productCounts: Record<string, number> = {};
+      data?.forEach(item => {
+        if (item.producto_id) {
+          productCounts[item.producto_id] = (productCounts[item.producto_id] || 0) + item.cantidad;
+        }
+      });
+      
+      // Get top 10
+      return Object.entries(productCounts)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 10)
+        .map(([id]) => id);
+    },
+  });
+
   const isLoading = loadingCategorias || loadingProductos;
 
+  // Set initial active category
+  useEffect(() => {
+    if (categorias && categorias.length > 0 && !activeCategory) {
+      setActiveCategory('destacados');
+    }
+  }, [categorias, activeCategory]);
+
+  // Sort and filter products
+  const sortProducts = (prods: Producto[]) => {
+    const sorted = [...prods];
+    switch (sortOption) {
+      case 'nombre':
+        return sorted.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      case 'precio-asc':
+        return sorted.sort((a, b) => Number(a.precio) - Number(b.precio));
+      case 'precio-desc':
+        return sorted.sort((a, b) => Number(b.precio) - Number(a.precio));
+      default:
+        return sorted;
+    }
+  };
+
+  const filteredProducts = useMemo(() => {
+    if (!productos) return [];
+    let filtered = productos;
+    
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(p => 
+        p.nombre.toLowerCase().includes(query) ||
+        p.descripcion?.toLowerCase().includes(query)
+      );
+    }
+    
+    return sortProducts(filtered);
+  }, [productos, searchQuery, sortOption]);
+
   const getProductosByCategoria = (categoriaId: string) => {
-    return productos?.filter(p => p.categoria_id === categoriaId) ?? [];
+    return sortProducts(filteredProducts.filter(p => p.categoria_id === categoriaId));
+  };
+
+  const popularProducts = useMemo(() => {
+    if (!productos || !popularProductIds) return [];
+    return popularProductIds
+      .map(id => productos.find(p => p.id === id))
+      .filter(Boolean) as Producto[];
+  }, [productos, popularProductIds]);
+
+  const getCartQuantity = (productId: string) => {
+    return cart.find(i => i.id === productId)?.cantidad || 0;
   };
 
   const addToCart = (producto: Producto) => {
@@ -308,16 +434,14 @@ export default function MenuMesa() {
     }
     
     if (user) {
-      // Logged in user - go to regular checkout with mesa info
       navigate('/checkout', { 
         state: { 
           items: cart, 
           mesa: numeroMesa,
-          mesaCodigo: codigoMesa // Pasar el código para poder volver
+          mesaCodigo: codigoMesa
         } 
       });
     } else {
-      // Not logged in - show options dialog
       setShowAuthDialog(true);
     }
   };
@@ -328,12 +452,27 @@ export default function MenuMesa() {
       state: { 
         items: cart, 
         mesa: numeroMesa,
-        mesaCodigo: codigoMesa // Pasar el código para poder volver
+        mesaCodigo: codigoMesa
       } 
     });
   };
 
-  const productosWithoutCategoria = productos?.filter(p => !p.categoria_id) ?? [];
+  const scrollToCategory = (categoryId: string) => {
+    setActiveCategory(categoryId);
+    const element = categoryRefs.current[categoryId];
+    if (element) {
+      const headerOffset = 180; // Account for sticky headers
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+      
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const productosWithoutCategoria = filteredProducts.filter(p => !p.categoria_id);
 
   if (!codigoMesa || numeroMesa === null || numeroMesa <= 0) {
     return (
@@ -362,27 +501,28 @@ export default function MenuMesa() {
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container flex items-center justify-between h-16">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-              <UtensilsCrossed className="w-5 h-5 text-primary-foreground" />
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="container flex items-center justify-between h-14">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+              <UtensilsCrossed className="w-4 h-4 text-primary-foreground" />
             </div>
-            <div>
-              <span className="font-display text-lg font-semibold">Nuestro Menú</span>
-              <Badge variant="secondary" className="ml-2">Mesa {numeroMesa}</Badge>
+            <div className="flex items-center gap-2">
+              <span className="font-display text-base font-semibold hidden sm:inline">Menú</span>
+              <Badge variant="secondary" className="text-xs">Mesa {numeroMesa}</Badge>
             </div>
           </div>
           
           {/* Cart Button */}
           <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="relative">
-                <ShoppingCart className="h-5 w-5" />
+              <Button variant="outline" size="sm" className="relative gap-2">
+                <ShoppingCart className="h-4 w-4" />
+                <span className="hidden sm:inline">Carrito</span>
                 {itemCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
                     {itemCount}
-                  </span>
+                  </Badge>
                 )}
               </Button>
             </SheetTrigger>
@@ -397,40 +537,40 @@ export default function MenuMesa() {
                     Tu carrito está vacío
                   </p>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {cart.map(item => (
-                      <div key={item.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                      <div key={item.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
                         {item.imagen_url ? (
                           <img 
                             src={item.imagen_url} 
                             alt={item.nombre}
-                            className="w-16 h-16 object-cover rounded-lg"
+                            className="w-12 h-12 object-cover rounded-lg"
                           />
                         ) : (
-                          <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
-                            <UtensilsCrossed className="h-6 w-6 text-muted-foreground" />
+                          <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
+                            <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
                           </div>
                         )}
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">{item.nombre}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{item.nombre}</p>
                           <p className="text-sm text-muted-foreground">
                             S/ {item.precio.toFixed(2)}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-7 w-7"
                             onClick={() => updateQuantity(item.id, -1)}
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
-                          <span className="w-6 text-center">{item.cantidad}</span>
+                          <span className="w-5 text-center text-sm">{item.cantidad}</span>
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-7 w-7"
                             onClick={() => updateQuantity(item.id, 1)}
                           >
                             <Plus className="h-3 w-3" />
@@ -438,10 +578,10 @@ export default function MenuMesa() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-destructive"
+                            className="h-7 w-7 text-destructive"
                             onClick={() => removeFromCart(item.id)}
                           >
-                            <X className="h-4 w-4" />
+                            <X className="h-3 w-3" />
                           </Button>
                         </div>
                       </div>
@@ -475,6 +615,71 @@ export default function MenuMesa() {
             </SheetContent>
           </Sheet>
         </div>
+
+        {/* Search and Sort Bar */}
+        <div className="container py-2 border-t bg-background">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar platos..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-9"
+              />
+            </div>
+            <Select value={sortOption} onValueChange={(v) => setSortOption(v as SortOption)}>
+              <SelectTrigger className="w-[130px] h-9">
+                <ArrowUpDown className="h-3 w-3 mr-1" />
+                <SelectValue placeholder="Ordenar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nombre">A-Z</SelectItem>
+                <SelectItem value="precio-asc">Menor precio</SelectItem>
+                <SelectItem value="precio-desc">Mayor precio</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Category Tabs */}
+        <div 
+          ref={tabsContainerRef}
+          className="container overflow-x-auto scrollbar-hide border-t bg-background"
+        >
+          <div className="flex gap-1 py-2 min-w-max">
+            <Button
+              variant={activeCategory === 'destacados' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8 px-3 rounded-full whitespace-nowrap"
+              onClick={() => scrollToCategory('destacados')}
+            >
+              <Star className="h-3 w-3 mr-1" />
+              Destacados
+            </Button>
+            {categorias?.map(cat => (
+              <Button
+                key={cat.id}
+                variant={activeCategory === cat.id ? 'default' : 'ghost'}
+                size="sm"
+                className="h-8 px-3 rounded-full whitespace-nowrap"
+                onClick={() => scrollToCategory(cat.id)}
+              >
+                {cat.nombre}
+              </Button>
+            ))}
+            {productosWithoutCategoria.length > 0 && (
+              <Button
+                variant={activeCategory === 'otros' ? 'default' : 'ghost'}
+                size="sm"
+                className="h-8 px-3 rounded-full whitespace-nowrap"
+                onClick={() => scrollToCategory('otros')}
+              >
+                Otros
+              </Button>
+            )}
+          </div>
+        </div>
       </header>
 
       {/* Auth Dialog */}
@@ -486,15 +691,15 @@ export default function MenuMesa() {
             </DialogTitle>
             <DialogDescription>
               {authMode === 'login' 
-                ? 'Inicia sesión para ganar puntos y ver tu historial' 
-                : 'Crea tu cuenta para acumular puntos con cada pedido'}
+                ? 'Inicia sesión para acumular puntos y recibir recompensas'
+                : 'Crea tu cuenta para empezar a acumular puntos'}
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+          <div className="space-y-4">
             {authMode === 'register' && (
               <div className="space-y-2">
-                <Label htmlFor="auth-name">Nombre completo</Label>
+                <Label htmlFor="auth-name">Nombre</Label>
                 <Input
                   id="auth-name"
                   placeholder="Tu nombre"
@@ -536,13 +741,18 @@ export default function MenuMesa() {
               disabled={authSubmitting}
             >
               {authSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : authMode === 'login' ? (
-                <LogIn className="h-4 w-4 mr-2" />
+                <>
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Iniciar Sesión
+                </>
               ) : (
-                <UserPlus className="h-4 w-4 mr-2" />
+                <>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Crear Cuenta
+                </>
               )}
-              {authMode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
             </Button>
             
             <div className="relative">
@@ -593,43 +803,30 @@ export default function MenuMesa() {
       {/* Pending Order Banner */}
       {pendingOrder && (
         <section className="bg-primary/10 border-b border-primary/20">
-          <div className="container py-4">
+          <div className="container py-3">
             <Card className="border-primary/30 bg-background">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex items-center gap-3">
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
                     {(() => {
                       const config = ESTADO_CONFIG[pendingOrder.estado] || ESTADO_CONFIG.pendiente;
                       const Icon = config.icon;
                       return (
-                        <div className={`p-2 rounded-full ${config.bgColor}`}>
-                          <Icon className={`h-5 w-5 ${config.color}`} />
+                        <div className={`p-1.5 rounded-full ${config.bgColor}`}>
+                          <Icon className={`h-4 w-4 ${config.color}`} />
                         </div>
                       );
                     })()}
                     <div>
-                      <p className="font-semibold">Tu pedido está {ESTADO_CONFIG[pendingOrder.estado]?.label.toLowerCase() || 'en proceso'}</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="font-semibold text-sm">Pedido {ESTADO_CONFIG[pendingOrder.estado]?.label.toLowerCase() || 'en proceso'}</p>
+                      <p className="text-xs text-muted-foreground">
                         {pendingOrder.orden_items?.length || 0} producto(s) • S/ {Number(pendingOrder.total).toFixed(2)}
                       </p>
                     </div>
                   </div>
-                  <Badge className={`${ESTADO_CONFIG[pendingOrder.estado]?.bgColor || 'bg-muted'} ${ESTADO_CONFIG[pendingOrder.estado]?.color || 'text-foreground'}`}>
+                  <Badge className={`text-xs ${ESTADO_CONFIG[pendingOrder.estado]?.bgColor || 'bg-muted'} ${ESTADO_CONFIG[pendingOrder.estado]?.color || 'text-foreground'}`}>
                     {ESTADO_CONFIG[pendingOrder.estado]?.label || pendingOrder.estado}
                   </Badge>
-                </div>
-                
-                {/* Order items preview */}
-                <div className="mt-3 pt-3 border-t text-sm text-muted-foreground">
-                  {pendingOrder.orden_items?.slice(0, 3).map((item, idx) => (
-                    <span key={item.id}>
-                      {idx > 0 && ' • '}
-                      {item.cantidad}x {item.productos?.nombre || 'Producto'}
-                    </span>
-                  ))}
-                  {(pendingOrder.orden_items?.length || 0) > 3 && (
-                    <span> y {pendingOrder.orden_items!.length - 3} más...</span>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -637,118 +834,117 @@ export default function MenuMesa() {
         </section>
       )}
 
-      {/* Hero */}
-      <section className="relative py-8 bg-gradient-to-b from-secondary/50 to-background">
-        <div className="container text-center">
-          <h1 className="font-display text-3xl md:text-4xl font-bold mb-2">
-            ¡Bienvenido!
-          </h1>
-          <p className="text-muted-foreground">
-            Estás en la mesa {numeroMesa}. Explora nuestro menú y haz tu pedido.
+      {/* Search results message */}
+      {searchQuery && (
+        <div className="container py-3 bg-muted/50">
+          <p className="text-sm text-muted-foreground">
+            {filteredProducts.length} resultado(s) para "{searchQuery}"
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="ml-2 h-auto p-0 text-primary"
+              onClick={() => setSearchQuery('')}
+            >
+              Limpiar
+            </Button>
           </p>
         </div>
-      </section>
+      )}
 
-      {/* Menu */}
-      <main className="container py-8">
+      {/* Menu Content */}
+      <main className="container py-4 space-y-6">
+        
+        {/* Featured/Popular Section */}
+        {popularProducts.length > 0 && !searchQuery && (
+          <section ref={(el) => { categoryRefs.current['destacados'] = el; }}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
+                Más Pedidos
+              </h2>
+            </div>
+            <ScrollArea className="w-full">
+              <div className="flex gap-3 pb-4 snap-x snap-mandatory">
+                {popularProducts.map(producto => (
+                  <ProductCardCompact 
+                    key={producto.id} 
+                    producto={producto} 
+                    onAdd={() => addToCart(producto)}
+                    cartQty={getCartQuantity(producto.id)}
+                  />
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </section>
+        )}
+
+        {/* Categories with horizontal scroll */}
         {categorias?.map(categoria => {
           const categProductos = getProductosByCategoria(categoria.id);
           if (categProductos.length === 0) return null;
           
           return (
-            <section key={categoria.id} className="mb-8">
-              <h2 className="text-2xl font-bold mb-4">{categoria.nombre}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {categProductos.map(producto => (
-                  <Card key={producto.id} className="overflow-hidden">
-                    <div className="aspect-[4/3] relative">
-                      {producto.imagen_url ? (
-                        <img
-                          src={producto.imagen_url}
-                          alt={producto.nombre}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-muted flex items-center justify-center">
-                          <UtensilsCrossed className="h-12 w-12 text-muted-foreground" />
-                        </div>
-                      )}
-                      {producto.stock !== null && producto.stock <= 5 && (
-                        <Badge className="absolute top-2 right-2 bg-orange-500">
-                          Últimos {producto.stock}
-                        </Badge>
-                      )}
-                    </div>
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-semibold">{producto.nombre}</h3>
-                        <span className="font-bold text-primary">
-                          S/ {Number(producto.precio).toFixed(2)}
-                        </span>
-                      </div>
-                      {producto.descripcion && (
-                        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                          {producto.descripcion}
-                        </p>
-                      )}
-                      <Button 
-                        className="w-full" 
-                        size="sm"
-                        onClick={() => addToCart(producto)}
-                      >
-                        <Plus className="h-4 w-4 mr-1" /> Agregar
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
+            <section 
+              key={categoria.id} 
+              ref={(el) => { categoryRefs.current[categoria.id] = el; }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-bold">{categoria.nombre}</h2>
+                <span className="text-xs text-muted-foreground">{categProductos.length} platos</span>
               </div>
+              <ScrollArea className="w-full">
+                <div className="flex gap-3 pb-4 snap-x snap-mandatory">
+                  {categProductos.map(producto => (
+                    <ProductCardCompact 
+                      key={producto.id} 
+                      producto={producto} 
+                      onAdd={() => addToCart(producto)}
+                      cartQty={getCartQuantity(producto.id)}
+                    />
+                  ))}
+                </div>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
             </section>
           );
         })}
 
+        {/* Products without category */}
         {productosWithoutCategoria.length > 0 && (
-          <section className="mb-8">
-            <h2 className="text-2xl font-bold mb-4">Otros</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {productosWithoutCategoria.map(producto => (
-                <Card key={producto.id} className="overflow-hidden">
-                  <div className="aspect-[4/3] relative">
-                    {producto.imagen_url ? (
-                      <img
-                        src={producto.imagen_url}
-                        alt={producto.nombre}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-muted flex items-center justify-center">
-                        <UtensilsCrossed className="h-12 w-12 text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-semibold">{producto.nombre}</h3>
-                      <span className="font-bold text-primary">
-                        S/ {Number(producto.precio).toFixed(2)}
-                      </span>
-                    </div>
-                    {producto.descripcion && (
-                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                        {producto.descripcion}
-                      </p>
-                    )}
-                    <Button 
-                      className="w-full" 
-                      size="sm"
-                      onClick={() => addToCart(producto)}
-                    >
-                      <Plus className="h-4 w-4 mr-1" /> Agregar
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+          <section ref={(el) => { categoryRefs.current['otros'] = el; }}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-bold">Otros</h2>
+              <span className="text-xs text-muted-foreground">{productosWithoutCategoria.length} platos</span>
             </div>
+            <ScrollArea className="w-full">
+              <div className="flex gap-3 pb-4 snap-x snap-mandatory">
+                {productosWithoutCategoria.map(producto => (
+                  <ProductCardCompact 
+                    key={producto.id} 
+                    producto={producto} 
+                    onAdd={() => addToCart(producto)}
+                    cartQty={getCartQuantity(producto.id)}
+                  />
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
           </section>
+        )}
+
+        {/* Empty state for search */}
+        {searchQuery && filteredProducts.length === 0 && (
+          <div className="text-center py-12">
+            <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No se encontraron platos</h3>
+            <p className="text-muted-foreground mb-4">
+              No hay resultados para "{searchQuery}"
+            </p>
+            <Button variant="outline" onClick={() => setSearchQuery('')}>
+              Ver todo el menú
+            </Button>
+          </div>
         )}
       </main>
 
@@ -756,7 +952,7 @@ export default function MenuMesa() {
       {itemCount > 0 && (
         <div className="fixed bottom-4 left-4 right-4 md:hidden z-50">
           <Button 
-            className="w-full shadow-lg" 
+            className="w-full shadow-lg h-12" 
             size="lg"
             onClick={() => setIsCartOpen(true)}
           >
