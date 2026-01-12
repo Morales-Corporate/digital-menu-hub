@@ -326,36 +326,42 @@ export type Database = {
       }
       productos: {
         Row: {
+          alergenos: string[] | null
           categoria_id: string | null
           created_at: string | null
           descripcion: string | null
           disponible: boolean | null
           id: string
           imagen_url: string | null
+          ingredientes: string | null
           nombre: string
           precio: number
           stock: number | null
           updated_at: string | null
         }
         Insert: {
+          alergenos?: string[] | null
           categoria_id?: string | null
           created_at?: string | null
           descripcion?: string | null
           disponible?: boolean | null
           id?: string
           imagen_url?: string | null
+          ingredientes?: string | null
           nombre: string
           precio?: number
           stock?: number | null
           updated_at?: string | null
         }
         Update: {
+          alergenos?: string[] | null
           categoria_id?: string | null
           created_at?: string | null
           descripcion?: string | null
           disponible?: boolean | null
           id?: string
           imagen_url?: string | null
+          ingredientes?: string | null
           nombre?: string
           precio?: number
           stock?: number | null
