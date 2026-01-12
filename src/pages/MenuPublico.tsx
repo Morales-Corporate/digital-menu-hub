@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, UtensilsCrossed, LogIn, Plus, RefreshCw, Star, Gift, Cake, Clock, CheckCircle, Package, MessageCircle } from 'lucide-react';
+import { Loader2, UtensilsCrossed, LogIn, Plus, RefreshCw, Star, Gift, Cake, Clock, CheckCircle, Package, MessageCircle, Eye } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
@@ -13,6 +13,7 @@ import UserMenu from '@/components/UserMenu';
 import { toast } from 'sonner';
 import { differenceInDays, parseISO, setYear, format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useState } from 'react';
 import {
   Tooltip,
   TooltipContent,
@@ -26,6 +27,7 @@ import {
   CarouselPrevious,
   CarouselNext,
 } from '@/components/ui/carousel';
+import { ProductDetailDialog } from '@/components/ProductDetailDialog';
 
 type Producto = Tables<'productos'>;
 type Categoria = Tables<'categorias'>;
@@ -58,6 +60,15 @@ export default function MenuPublico() {
   const { user } = useAuth();
   const { addItem, addItems } = useCart();
   const navigate = useNavigate();
+  
+  // Product detail dialog state
+  const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
+  const [showProductDetail, setShowProductDetail] = useState(false);
+
+  const openProductDetail = (producto: Producto) => {
+    setSelectedProduct(producto);
+    setShowProductDetail(true);
+  };
 
   // Obtener perfil del usuario para el saludo y cumpleaños
   const { data: profile } = useQuery({
@@ -581,6 +592,7 @@ export default function MenuPublico() {
                         key={producto.id} 
                         producto={producto} 
                         onAddToCart={() => handleAddToCart(producto)}
+                        onViewDetail={() => openProductDetail(producto)}
                         showAddButton={!!user}
                       />
                     ))}
@@ -600,6 +612,7 @@ export default function MenuPublico() {
                       key={producto.id} 
                       producto={producto}
                       onAddToCart={() => handleAddToCart(producto)}
+                      onViewDetail={() => openProductDetail(producto)}
                       showAddButton={!!user}
                     />
                   ))}
@@ -616,6 +629,16 @@ export default function MenuPublico() {
           <p>© {new Date().getFullYear()} Menú Digital. Todos los derechos reservados.</p>
         </div>
       </footer>
+
+      {/* Product Detail Dialog */}
+      <ProductDetailDialog
+        producto={selectedProduct}
+        open={showProductDetail}
+        onOpenChange={setShowProductDetail}
+        onAddToCart={(prod) => {
+          handleAddToCart(prod);
+        }}
+      />
     </div>
   );
 }
@@ -623,24 +646,37 @@ export default function MenuPublico() {
 interface ProductCardProps {
   producto: Producto;
   onAddToCart?: () => void;
+  onViewDetail?: () => void;
   showAddButton?: boolean;
 }
 
-function ProductCard({ producto, onAddToCart, showAddButton }: ProductCardProps) {
+function ProductCard({ producto, onAddToCart, onViewDetail, showAddButton }: ProductCardProps) {
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
       {producto.imagen_url && (
-        <div className="aspect-video">
+        <div 
+          className="aspect-video relative cursor-pointer group"
+          onClick={onViewDetail}
+        >
           <img 
             src={producto.imagen_url} 
             alt={producto.nombre}
             className="w-full h-full object-cover"
           />
+          {/* View detail overlay */}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+            <Eye className="h-8 w-8 text-white drop-shadow-lg" />
+          </div>
         </div>
       )}
       <CardContent className={producto.imagen_url ? "p-4" : "p-6"}>
         <div className="flex justify-between items-start gap-2 mb-2">
-          <h3 className="font-display text-lg font-medium">{producto.nombre}</h3>
+          <h3 
+            className="font-display text-lg font-medium cursor-pointer hover:text-primary transition-colors"
+            onClick={onViewDetail}
+          >
+            {producto.nombre}
+          </h3>
           <span className="font-semibold text-primary text-lg whitespace-nowrap">
             S/ {Number(producto.precio).toFixed(2)}
           </span>
@@ -650,15 +686,27 @@ function ProductCard({ producto, onAddToCart, showAddButton }: ProductCardProps)
             {producto.descripcion}
           </p>
         )}
-        {showAddButton && (
-          <Button 
-            onClick={onAddToCart} 
-            size="sm" 
-            className="w-full"
-          >
-            <Plus className="h-4 w-4 mr-2" /> Agregar
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {onViewDetail && (
+            <Button 
+              onClick={onViewDetail} 
+              variant="outline"
+              size="sm"
+              className="flex-1"
+            >
+              <Eye className="h-4 w-4 mr-2" /> Ver detalle
+            </Button>
+          )}
+          {showAddButton && (
+            <Button 
+              onClick={onAddToCart} 
+              size="sm" 
+              className="flex-1"
+            >
+              <Plus className="h-4 w-4 mr-2" /> Agregar
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

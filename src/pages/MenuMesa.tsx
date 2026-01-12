@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Loader2, UtensilsCrossed, Plus, ShoppingCart, Minus, X, User, LogIn, UserPlus, Clock, CheckCircle, ChefHat, Package, Search, Star, ArrowUpDown, ChevronRight } from 'lucide-react';
+import { Loader2, UtensilsCrossed, Plus, ShoppingCart, Minus, X, User, LogIn, UserPlus, Clock, CheckCircle, ChefHat, Package, Search, Star, ArrowUpDown, ChevronRight, Eye } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -16,6 +16,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { ProductDetailDialog } from '@/components/ProductDetailDialog';
 
 type Producto = Tables<'productos'>;
 type Categoria = Tables<'categorias'>;
@@ -89,11 +90,24 @@ const ESTADO_CONFIG: Record<string, { label: string; icon: React.ElementType; co
 };
 
 // Compact product card for horizontal scroll
-function ProductCardCompact({ producto, onAdd, cartQty }: { producto: Producto; onAdd: () => void; cartQty: number }) {
+function ProductCardCompact({ 
+  producto, 
+  onAdd, 
+  onViewDetail,
+  cartQty 
+}: { 
+  producto: Producto; 
+  onAdd: () => void; 
+  onViewDetail: () => void;
+  cartQty: number;
+}) {
   return (
     <div className="w-[140px] flex-shrink-0 snap-start">
       <Card className="overflow-hidden h-full">
-        <div className="aspect-square relative">
+        <div 
+          className="aspect-square relative cursor-pointer"
+          onClick={onViewDetail}
+        >
           {producto.imagen_url ? (
             <img
               src={producto.imagen_url}
@@ -115,9 +129,18 @@ function ProductCardCompact({ producto, onAdd, cartQty }: { producto: Producto; 
               {cartQty}
             </Badge>
           )}
+          {/* View detail overlay */}
+          <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+            <Eye className="h-6 w-6 text-white drop-shadow-lg" />
+          </div>
         </div>
         <CardContent className="p-2">
-          <h3 className="font-medium text-xs line-clamp-2 mb-1 leading-tight">{producto.nombre}</h3>
+          <h3 
+            className="font-medium text-xs line-clamp-2 mb-1 leading-tight cursor-pointer hover:text-primary"
+            onClick={onViewDetail}
+          >
+            {producto.nombre}
+          </h3>
           <div className="flex justify-between items-center gap-1">
             <span className="font-bold text-primary text-sm">
               S/ {Number(producto.precio).toFixed(2)}
@@ -125,7 +148,10 @@ function ProductCardCompact({ producto, onAdd, cartQty }: { producto: Producto; 
             <Button 
               size="icon"
               className="h-7 w-7 rounded-full"
-              onClick={onAdd}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAdd();
+              }}
             >
               <Plus className="h-3.5 w-3.5" />
             </Button>
@@ -157,6 +183,10 @@ export default function MenuMesa() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const categoryRefs = useRef<Record<string, HTMLElement | null>>({});
   const tabsContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Product detail dialog state
+  const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
+  const [showProductDetail, setShowProductDetail] = useState(false);
   
   const numeroMesa = useMemo(() => {
     return decodeMesaCode(codigoMesa || '');
@@ -371,6 +401,17 @@ export default function MenuMesa() {
       }];
     });
     toast.success(`${producto.nombre} agregado`);
+  };
+
+  const openProductDetail = (producto: Producto) => {
+    setSelectedProduct(producto);
+    setShowProductDetail(true);
+  };
+
+  const handleUpdateQuantityFromDialog = (delta: number) => {
+    if (selectedProduct) {
+      updateQuantity(selectedProduct.id, delta);
+    }
   };
 
   const updateQuantity = (id: string, delta: number) => {
@@ -870,6 +911,7 @@ export default function MenuMesa() {
                     key={producto.id} 
                     producto={producto} 
                     onAdd={() => addToCart(producto)}
+                    onViewDetail={() => openProductDetail(producto)}
                     cartQty={getCartQuantity(producto.id)}
                   />
                 ))}
@@ -900,6 +942,7 @@ export default function MenuMesa() {
                       key={producto.id} 
                       producto={producto} 
                       onAdd={() => addToCart(producto)}
+                      onViewDetail={() => openProductDetail(producto)}
                       cartQty={getCartQuantity(producto.id)}
                     />
                   ))}
@@ -924,6 +967,7 @@ export default function MenuMesa() {
                     key={producto.id} 
                     producto={producto} 
                     onAdd={() => addToCart(producto)}
+                    onViewDetail={() => openProductDetail(producto)}
                     cartQty={getCartQuantity(producto.id)}
                   />
                 ))}
@@ -961,6 +1005,16 @@ export default function MenuMesa() {
           </Button>
         </div>
       )}
+
+      {/* Product Detail Dialog */}
+      <ProductDetailDialog
+        producto={selectedProduct}
+        open={showProductDetail}
+        onOpenChange={setShowProductDetail}
+        onAddToCart={addToCart}
+        cartQuantity={selectedProduct ? getCartQuantity(selectedProduct.id) : 0}
+        onUpdateQuantity={handleUpdateQuantityFromDialog}
+      />
     </div>
   );
 }
