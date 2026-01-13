@@ -102,10 +102,10 @@ function ProductCardCompact({
   cartQty: number;
 }) {
   return (
-    <div className="w-[110px] flex-shrink-0 snap-start">
+    <div className="w-[100px] flex-shrink-0 snap-start">
       <Card className="overflow-hidden h-full">
         <div 
-          className="aspect-[4/3] relative cursor-pointer"
+          className="aspect-square relative cursor-pointer"
           onClick={onViewDetail}
         >
           {producto.imagen_url ? (
@@ -116,7 +116,7 @@ function ProductCardCompact({
             />
           ) : (
             <div className="w-full h-full bg-muted flex items-center justify-center">
-              <UtensilsCrossed className="h-6 w-6 text-muted-foreground" />
+              <UtensilsCrossed className="h-5 w-5 text-muted-foreground" />
             </div>
           )}
           {producto.stock !== null && producto.stock <= 5 && (
@@ -129,10 +129,6 @@ function ProductCardCompact({
               {cartQty}
             </Badge>
           )}
-          {/* View detail overlay on tap */}
-          <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-            <Eye className="h-5 w-5 text-white drop-shadow-lg" />
-          </div>
         </div>
         <CardContent className="p-1.5">
           <h3 
@@ -142,12 +138,12 @@ function ProductCardCompact({
             {producto.nombre}
           </h3>
           <div className="flex justify-between items-center gap-0.5">
-            <span className="font-bold text-primary text-xs">
+            <span className="font-bold text-primary text-[10px]">
               S/ {Number(producto.precio).toFixed(2)}
             </span>
             <Button 
               size="icon"
-              className="h-6 w-6 rounded-full"
+              className="h-5 w-5 rounded-full"
               onClick={(e) => {
                 e.stopPropagation();
                 onAdd();
