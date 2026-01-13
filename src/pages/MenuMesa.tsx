@@ -102,10 +102,10 @@ function ProductCardCompact({
   cartQty: number;
 }) {
   return (
-    <div className="w-[140px] flex-shrink-0 snap-start">
+    <div className="w-[110px] flex-shrink-0 snap-start">
       <Card className="overflow-hidden h-full">
         <div 
-          className="aspect-square relative cursor-pointer"
+          className="aspect-[4/3] relative cursor-pointer"
           onClick={onViewDetail}
         >
           {producto.imagen_url ? (
@@ -116,44 +116,44 @@ function ProductCardCompact({
             />
           ) : (
             <div className="w-full h-full bg-muted flex items-center justify-center">
-              <UtensilsCrossed className="h-8 w-8 text-muted-foreground" />
+              <UtensilsCrossed className="h-6 w-6 text-muted-foreground" />
             </div>
           )}
           {producto.stock !== null && producto.stock <= 5 && (
-            <Badge className="absolute top-1 right-1 text-[10px] px-1 py-0 bg-orange-500">
-              Últimos {producto.stock}
+            <Badge className="absolute top-0.5 right-0.5 text-[8px] px-1 py-0 bg-orange-500">
+              {producto.stock}
             </Badge>
           )}
           {cartQty > 0 && (
-            <Badge className="absolute top-1 left-1 text-[10px] px-1.5 py-0.5 bg-primary">
+            <Badge className="absolute top-0.5 left-0.5 text-[8px] px-1 py-0 bg-primary">
               {cartQty}
             </Badge>
           )}
-          {/* View detail overlay */}
+          {/* View detail overlay on tap */}
           <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-            <Eye className="h-6 w-6 text-white drop-shadow-lg" />
+            <Eye className="h-5 w-5 text-white drop-shadow-lg" />
           </div>
         </div>
-        <CardContent className="p-2">
+        <CardContent className="p-1.5">
           <h3 
-            className="font-medium text-xs line-clamp-2 mb-1 leading-tight cursor-pointer hover:text-primary"
+            className="font-medium text-[10px] line-clamp-2 mb-0.5 leading-tight cursor-pointer hover:text-primary"
             onClick={onViewDetail}
           >
             {producto.nombre}
           </h3>
-          <div className="flex justify-between items-center gap-1">
-            <span className="font-bold text-primary text-sm">
+          <div className="flex justify-between items-center gap-0.5">
+            <span className="font-bold text-primary text-xs">
               S/ {Number(producto.precio).toFixed(2)}
             </span>
             <Button 
               size="icon"
-              className="h-7 w-7 rounded-full"
+              className="h-6 w-6 rounded-full"
               onClick={(e) => {
                 e.stopPropagation();
                 onAdd();
               }}
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-3 w-3" />
             </Button>
           </div>
         </CardContent>
