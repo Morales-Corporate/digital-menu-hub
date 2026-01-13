@@ -102,48 +102,51 @@ function ProductCardCompact({
   cartQty: number;
 }) {
   return (
-    <div className="w-[100px] flex-shrink-0 snap-start">
-      <Card className="overflow-hidden h-full">
+    <div className="w-28 flex-shrink-0 snap-start">
+      <Card className="overflow-hidden h-full flex flex-col">
         <div 
-          className="aspect-square relative cursor-pointer"
+          className="relative cursor-pointer w-full"
           onClick={onViewDetail}
+          style={{ paddingBottom: '100%' }}
         >
-          {producto.imagen_url ? (
-            <img
-              src={producto.imagen_url}
-              alt={producto.nombre}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-muted flex items-center justify-center">
-              <UtensilsCrossed className="h-5 w-5 text-muted-foreground" />
-            </div>
-          )}
+          <div className="absolute inset-0">
+            {producto.imagen_url ? (
+              <img
+                src={producto.imagen_url}
+                alt={producto.nombre}
+                className="w-full h-full object-cover object-center"
+              />
+            ) : (
+              <div className="w-full h-full bg-muted flex items-center justify-center">
+                <UtensilsCrossed className="h-6 w-6 text-muted-foreground" />
+              </div>
+            )}
+          </div>
           {producto.stock !== null && producto.stock <= 5 && (
-            <Badge className="absolute top-0.5 right-0.5 text-[8px] px-1 py-0 bg-orange-500">
+            <Badge className="absolute top-1 right-1 text-[9px] px-1.5 py-0.5 bg-orange-500 z-10">
               {producto.stock}
             </Badge>
           )}
           {cartQty > 0 && (
-            <Badge className="absolute top-0.5 left-0.5 text-[8px] px-1 py-0 bg-primary">
+            <Badge className="absolute top-1 left-1 text-[9px] px-1.5 py-0.5 bg-primary z-10">
               {cartQty}
             </Badge>
           )}
         </div>
-        <CardContent className="p-1.5">
+        <CardContent className="p-2 flex-1 flex flex-col justify-between">
           <h3 
-            className="font-medium text-[10px] line-clamp-2 mb-0.5 leading-tight cursor-pointer hover:text-primary"
+            className="font-medium text-xs line-clamp-2 mb-1 leading-tight cursor-pointer hover:text-primary"
             onClick={onViewDetail}
           >
             {producto.nombre}
           </h3>
-          <div className="flex justify-between items-center gap-0.5">
-            <span className="font-bold text-primary text-[10px]">
+          <div className="flex justify-between items-center gap-1">
+            <span className="font-bold text-primary text-xs">
               S/ {Number(producto.precio).toFixed(2)}
             </span>
             <Button 
               size="icon"
-              className="h-5 w-5 rounded-full"
+              className="h-6 w-6 rounded-full"
               onClick={(e) => {
                 e.stopPropagation();
                 onAdd();
