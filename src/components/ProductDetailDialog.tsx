@@ -48,20 +48,20 @@ export function ProductDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md p-0 overflow-hidden max-h-[90vh] flex flex-col">
-        {/* Product Image */}
-        {producto.imagen_url ? (
-          <div className="aspect-video w-full flex-shrink-0">
+        {/* Product Image - centered with proper aspect ratio */}
+        <div className="w-full bg-muted flex-shrink-0 flex items-center justify-center" style={{ maxHeight: '40vh' }}>
+          {producto.imagen_url ? (
             <img
               src={producto.imagen_url}
               alt={producto.nombre}
-              className="w-full h-full object-cover"
+              className="w-full h-auto max-h-[40vh] object-contain"
             />
-          </div>
-        ) : (
-          <div className="aspect-video w-full bg-muted flex items-center justify-center flex-shrink-0">
-            <UtensilsCrossed className="h-16 w-16 text-muted-foreground" />
-          </div>
-        )}
+          ) : (
+            <div className="aspect-video w-full flex items-center justify-center">
+              <UtensilsCrossed className="h-16 w-16 text-muted-foreground" />
+            </div>
+          )}
+        </div>
 
         <div className="p-6 space-y-4 overflow-y-auto">
           <DialogHeader className="text-left p-0">
