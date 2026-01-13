@@ -90,33 +90,62 @@ export default function AdminIndex() {
     }
   };
 
+  // Helper to get date key in Lima timezone
+  const getDateKeyLima = (date: string | Date) => {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Lima',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(d);
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
+      const todayKey = getDateKeyLima(new Date());
       const today = startOfDay(new Date());
       const yesterday = startOfDay(subDays(new Date(), 1));
 
-      // Fetch order counts by status
+      // Fetch closed dates to filter orders not yet closed
+      const { data: cierresData } = await supabase
+        .from('cierres_caja')
+        .select('fecha');
+      
+      const fechasCerradas = cierresData?.map(c => c.fecha) || [];
+
+      // Fetch all orders
       const { data: ordersData } = await supabase
         .from('ordenes')
-        .select('id, estado');
+        .select('id, estado, created_at');
+
+      // Filter orders: only today's orders that are NOT in a closed date
+      const visibleOrders = ordersData?.filter(order => {
+        const orderDateKey = getDateKeyLima(order.created_at);
+        if (orderDateKey !== todayKey) return false;
+        if (fechasCerradas.includes(orderDateKey)) return false;
+        return true;
+      }) || [];
 
       const newCounts: OrderCounts = { pendiente: 0, confirmado: 0, en_camino: 0, entregado: 0 };
-      ordersData?.forEach(order => {
+      visibleOrders.forEach(order => {
         if (order.estado in newCounts) {
           newCounts[order.estado as keyof OrderCounts]++;
         }
       });
       setCounts(newCounts);
 
-      // Fetch today's sales
-      const { data: todayData } = await supabase
-        .from('ordenes')
-        .select('total')
-        .gte('created_at', today.toISOString())
-        .eq('estado', 'entregado');
+      // Fetch today's sales (only from visible orders that are entregado)
+      const entregadosHoy = visibleOrders.filter(o => o.estado === 'entregado');
+      const { data: todayData } = entregadosHoy.length > 0 
+        ? await supabase
+            .from('ordenes')
+            .select('total')
+            .in('id', entregadosHoy.map(o => o.id))
+        : { data: [] };
 
-      // Fetch yesterday's sales
+      // Fetch yesterday's sales (for comparison)
       const { data: yesterdayData } = await supabase
         .from('ordenes')
         .select('total')
@@ -124,33 +153,43 @@ export default function AdminIndex() {
         .lt('created_at', today.toISOString())
         .eq('estado', 'entregado');
 
+      let todaySalesTotal = 0;
+      todayData?.forEach(o => { todaySalesTotal += o.total || 0; });
+      let yesterdaySalesTotal = 0;
+      yesterdayData?.forEach(o => { yesterdaySalesTotal += o.total || 0; });
+
       setDailySummary({
-        todaySales: todayData?.reduce((sum, o) => sum + o.total, 0) || 0,
-        todayOrders: todayData?.length || 0,
-        yesterdaySales: yesterdayData?.reduce((sum, o) => sum + o.total, 0) || 0,
+        todaySales: todaySalesTotal,
+        todayOrders: entregadosHoy.length,
+        yesterdaySales: yesterdaySalesTotal,
         yesterdayOrders: yesterdayData?.length || 0
       });
 
-      // Fetch recent pending orders
-      const { data: recentData } = await supabase
-        .from('ordenes')
-        .select('id, created_at, total, estado, user_id')
-        .eq('estado', 'pendiente')
-        .order('created_at', { ascending: false })
-        .limit(5);
+      // Fetch recent pending orders (only visible ones)
+      const pendingOrders = visibleOrders
+        .filter(o => o.estado === 'pendiente')
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 5);
 
-      if (recentData && recentData.length > 0) {
-        const userIds = [...new Set(recentData.map(o => o.user_id))];
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .in('id', userIds);
+      if (pendingOrders.length > 0) {
+        const { data: fullPendingData } = await supabase
+          .from('ordenes')
+          .select('id, created_at, total, estado, user_id')
+          .in('id', pendingOrders.map(o => o.id));
+
+        const userIds = [...new Set(fullPendingData?.filter(o => o.user_id).map(o => o.user_id) || [])];
+        const { data: profilesData } = userIds.length > 0
+          ? await supabase
+              .from('profiles')
+              .select('id, full_name')
+              .in('id', userIds)
+          : { data: [] };
         
-        const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+        const profilesMap = new Map((profilesData || []).map(p => [p.id, p] as const));
         
-        const ordersWithProfiles = recentData.map(order => ({
+        const ordersWithProfiles: RecentOrder[] = (fullPendingData || []).map(order => ({
           ...order,
-          profiles: profilesMap.get(order.user_id) || null
+          profiles: order.user_id ? profilesMap.get(order.user_id) || null : null
         }));
         
         setRecentOrders(ordersWithProfiles);
