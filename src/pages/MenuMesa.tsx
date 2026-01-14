@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -8,7 +8,21 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Loader2, UtensilsCrossed, Plus, ShoppingCart, Minus, X, User, LogIn, UserPlus, Clock, CheckCircle, ChefHat, Package, Search, Star, ArrowUpDown, ChevronRight, Eye } from 'lucide-react';
+import { Loader2, UtensilsCrossed, Plus, ShoppingCart, Minus, X, User, LogIn, UserPlus, Clock, CheckCircle, ChefHat, Package, Search, Star, ArrowUpDown, ChevronRight, Eye, Gift, LogOut, Edit, History } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -230,7 +244,7 @@ function FeaturedCarousel({
 export default function MenuMesa() {
   const { numero: codigoMesa } = useParams<{ numero: string }>();
   const navigate = useNavigate();
-  const { user, signIn, signUp, loading: authLoading } = useAuth();
+  const { user, signIn, signUp, signOut, isAdmin, loading: authLoading } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
@@ -394,6 +408,58 @@ export default function MenuMesa() {
         .map(([id]) => id);
     },
   });
+
+  // Fetch user points
+  const { data: puntosData } = useQuery({
+    queryKey: ['user-points-mesa', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('puntos_usuario')
+        .select('puntos_totales')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Fetch active discount
+  const { data: descuentoActivo } = useQuery({
+    queryKey: ['descuento-activo-mesa', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('descuentos_activos')
+        .select('*, recompensas(*)')
+        .eq('user_id', user.id)
+        .eq('usado', false)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Fetch available rewards
+  const { data: recompensas } = useQuery({
+    queryKey: ['recompensas-mesa'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('recompensas')
+        .select('*')
+        .eq('activo', true)
+        .order('puntos_requeridos', { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const puntos = puntosData?.puntos_totales || 0;
+  const recompensasCanjeables = recompensas?.filter(r => puntos >= r.puntos_requeridos) || [];
+  const tieneRecompensasCanjeable = recompensasCanjeables.length > 0 && !descuentoActivo;
 
   const isLoading = loadingCategorias || loadingProductos;
 
@@ -619,19 +685,60 @@ export default function MenuMesa() {
             </div>
           </div>
           
-          {/* Cart Button */}
-          <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="sm" className="relative gap-2">
-                <ShoppingCart className="h-4 w-4" />
-                <span className="hidden sm:inline">Carrito</span>
-                {itemCount > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
-                    {itemCount}
-                  </Badge>
-                )}
-              </Button>
-            </SheetTrigger>
+          <div className="flex items-center gap-2">
+            {/* User Points and Rewards Badges */}
+            {user && descuentoActivo && (
+              <Badge 
+                className="gap-1 cursor-pointer bg-green-500 hover:bg-green-600 text-xs"
+                onClick={() => navigate('/recompensas')}
+              >
+                <Gift className="h-3 w-3" />
+                {descuentoActivo.recompensas?.porcentaje_descuento}% OFF
+              </Badge>
+            )}
+            {user && tieneRecompensasCanjeable && (
+              <Badge 
+                variant="outline" 
+                className="gap-1 cursor-pointer bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100 animate-pulse text-xs"
+                onClick={() => navigate('/recompensas')}
+              >
+                <Gift className="h-3 w-3" />
+                ¡Canjear!
+              </Badge>
+            )}
+            {user && puntos > 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge 
+                      variant="secondary" 
+                      className="gap-1 cursor-pointer text-xs"
+                      onClick={() => navigate('/recompensas')}
+                    >
+                      <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
+                      {puntos} pts
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Tus puntos acumulados</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
+            {/* Cart Button */}
+            <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="relative gap-2">
+                  <ShoppingCart className="h-4 w-4" />
+                  <span className="hidden sm:inline">Carrito</span>
+                  {itemCount > 0 && (
+                    <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
+                      {itemCount}
+                    </Badge>
+                  )}
+                </Button>
+              </SheetTrigger>
             <SheetContent className="flex flex-col">
               <SheetHeader>
                 <SheetTitle>Tu Pedido - Mesa {numeroMesa}</SheetTitle>
@@ -720,6 +827,79 @@ export default function MenuMesa() {
               )}
             </SheetContent>
           </Sheet>
+
+            {/* User Menu */}
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full h-8 w-8">
+                    <User className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col">
+                      <span className="font-medium">Mi Cuenta</span>
+                      <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  
+                  {isAdmin ? (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin" className="cursor-pointer">
+                        <User className="mr-2 h-4 w-4" />
+                        Panel Admin
+                      </Link>
+                    </DropdownMenuItem>
+                  ) : (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/recompensas" className="cursor-pointer">
+                          <Gift className="mr-2 h-4 w-4" />
+                          Mis Recompensas
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/mis-ordenes" className="cursor-pointer">
+                          <History className="mr-2 h-4 w-4" />
+                          Mis Órdenes
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/editar-perfil" className="cursor-pointer">
+                          <Edit className="mr-2 h-4 w-4" />
+                          Editar Perfil
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={async () => {
+                      await signOut();
+                      toast.success('Sesión cerrada');
+                    }} 
+                    className="text-destructive cursor-pointer"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Cerrar Sesión
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowAuthDialog(true)}
+                className="gap-1"
+              >
+                <LogIn className="h-4 w-4" />
+                <span className="hidden sm:inline">Ingresar</span>
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Search and Sort Bar */}
