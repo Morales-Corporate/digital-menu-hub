@@ -124,4 +124,13 @@
   .font-sans {
     font-family: 'Inter', system-ui, sans-serif;
   }
+
+  /* Hide scrollbar for auto-scroll carousels */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }

@@ -378,17 +378,17 @@ export default function Meseros() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
-              Rendimiento de Meseros
+              {periodoStats === '30' ? 'Mesero del Mes' : 'Rendimiento de Meseros'}
             </CardTitle>
             <Select value={periodoStats} onValueChange={setPeriodoStats}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="0">Hoy</SelectItem>
                 <SelectItem value="7">Últimos 7 días</SelectItem>
                 <SelectItem value="15">Últimos 15 días</SelectItem>
-                <SelectItem value="30">Últimos 30 días</SelectItem>
+                <SelectItem value="30">Este mes</SelectItem>
               </SelectContent>
             </Select>
           </CardHeader>
@@ -396,11 +396,15 @@ export default function Meseros() {
             {estadisticas.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {estadisticas.map((stat, index) => (
-                  <Card key={stat.mesero_id} className={index === 0 ? 'border-primary/50 bg-primary/5' : ''}>
+                  <Card key={stat.mesero_id} className={index === 0 ? 'border-primary/50 bg-primary/5 ring-2 ring-primary/20' : ''}>
                     <CardContent className="pt-4">
                       <div className="flex items-center justify-between mb-3">
                         <span className="font-semibold">{stat.nombre}</span>
-                        {index === 0 && <Badge className="bg-primary">Top</Badge>}
+                        {index === 0 && (
+                          <Badge className="bg-primary">
+                            {periodoStats === '30' ? '🏆 Del Mes' : 'Top'}
+                          </Badge>
+                        )}
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-center">
                         <div>
