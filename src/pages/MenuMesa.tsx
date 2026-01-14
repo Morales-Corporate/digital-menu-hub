@@ -161,6 +161,72 @@ function ProductCardCompact({
   );
 }
 
+// Featured products carousel with auto-scroll
+function FeaturedCarousel({
+  productos,
+  categoryRef,
+  onAdd,
+  onViewDetail,
+  getCartQuantity
+}: {
+  productos: Producto[];
+  categoryRef: (el: HTMLElement | null) => void;
+  onAdd: (p: Producto) => void;
+  onViewDetail: (p: Producto) => void;
+  getCartQuantity: (id: string) => number;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Auto-scroll effect
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container || isHovered || productos.length <= 3) return;
+
+    const scrollSpeed = 1; // pixels per frame
+    const interval = setInterval(() => {
+      if (container.scrollLeft >= container.scrollWidth - container.clientWidth) {
+        container.scrollLeft = 0;
+      } else {
+        container.scrollLeft += scrollSpeed;
+      }
+    }, 30);
+
+    return () => clearInterval(interval);
+  }, [isHovered, productos.length]);
+
+  return (
+    <section ref={categoryRef}>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-bold flex items-center gap-2">
+          <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
+          Más Pedidos
+        </h2>
+      </div>
+      <div
+        ref={scrollRef}
+        className="overflow-x-auto scrollbar-hide"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onTouchStart={() => setIsHovered(true)}
+        onTouchEnd={() => setTimeout(() => setIsHovered(false), 3000)}
+      >
+        <div className="flex gap-3 pb-4 snap-x snap-mandatory">
+          {productos.map(producto => (
+            <ProductCardCompact 
+              key={producto.id} 
+              producto={producto} 
+              onAdd={() => onAdd(producto)}
+              onViewDetail={() => onViewDetail(producto)}
+              cartQty={getCartQuantity(producto.id)}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function MenuMesa() {
   const { numero: codigoMesa } = useParams<{ numero: string }>();
   const navigate = useNavigate();
@@ -896,28 +962,13 @@ export default function MenuMesa() {
         
         {/* Featured/Popular Section */}
         {popularProducts.length > 0 && !searchQuery && (
-          <section ref={(el) => { categoryRefs.current['destacados'] = el; }}>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold flex items-center gap-2">
-                <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
-                Más Pedidos
-              </h2>
-            </div>
-            <ScrollArea className="w-full">
-              <div className="flex gap-3 pb-4 snap-x snap-mandatory">
-                {popularProducts.map(producto => (
-                  <ProductCardCompact 
-                    key={producto.id} 
-                    producto={producto} 
-                    onAdd={() => addToCart(producto)}
-                    onViewDetail={() => openProductDetail(producto)}
-                    cartQty={getCartQuantity(producto.id)}
-                  />
-                ))}
-              </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-          </section>
+          <FeaturedCarousel 
+            productos={popularProducts}
+            categoryRef={(el) => { categoryRefs.current['destacados'] = el; }}
+            onAdd={addToCart}
+            onViewDetail={openProductDetail}
+            getCartQuantity={getCartQuantity}
+          />
         )}
 
         {/* Categories with horizontal scroll */}
