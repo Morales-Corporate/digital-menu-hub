@@ -11,15 +11,17 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { 
   CheckCircle, Clock, Eye, RefreshCw, Image as ImageIcon, Truck, Package, 
   MapPin, Phone, User, Banknote, CreditCard, QrCode, XCircle, AlertTriangle,
-  DollarSign, UtensilsCrossed, Users
+  DollarSign, UtensilsCrossed, Users, Plus, Wallet
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, differenceInMinutes, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
+import CrearPedidoModal from '@/components/admin/CrearPedidoModal';
 
 interface OrderItem {
   id: string;
@@ -86,6 +88,12 @@ export default function Ordenes() {
   const [meseroDialogOpen, setMeseroDialogOpen] = useState(false);
   const [selectedOrderForMesero, setSelectedOrderForMesero] = useState<string | null>(null);
   const [selectedMeseroId, setSelectedMeseroId] = useState<string>('');
+  const [crearPedidoOpen, setCrearPedidoOpen] = useState(false);
+  
+  // Payment dialog state for orders with pago_pendiente
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [paymentOrderId, setPaymentOrderId] = useState<string | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('efectivo');
 
   // Fetch meseros activos
   const { data: meseros = [] } = useQuery({
@@ -208,9 +216,18 @@ export default function Ordenes() {
     };
   }, []);
 
-  const handleUpdateStatus = async (orderId: string, newStatus: OrderState) => {
+  const handleUpdateStatus = async (orderId: string, newStatus: OrderState, paymentMethod?: string) => {
     try {
       const order = orders.find(o => o.id === orderId);
+      
+      // Check if order has pending payment and is being marked as delivered
+      if (newStatus === 'entregado' && order?.metodo_pago === 'pago_pendiente' && !paymentMethod) {
+        // Open payment dialog instead of directly updating
+        setPaymentOrderId(orderId);
+        setSelectedPaymentMethod('efectivo');
+        setShowPaymentDialog(true);
+        return;
+      }
       
       // If confirming, decrement stock for each product
       if (newStatus === 'confirmado' && order) {
@@ -245,9 +262,13 @@ export default function Ordenes() {
       }
 
       // Build update object - include entregado_at if marking as delivered
-      const updateData: { estado: string; entregado_at?: string } = { estado: newStatus };
+      const updateData: { estado: string; entregado_at?: string; metodo_pago?: string } = { estado: newStatus };
       if (newStatus === 'entregado') {
         updateData.entregado_at = new Date().toISOString();
+        // If payment method provided (from dialog), update it
+        if (paymentMethod) {
+          updateData.metodo_pago = paymentMethod;
+        }
       }
 
       const { error } = await supabase
@@ -258,7 +279,7 @@ export default function Ordenes() {
       if (error) throw error;
 
       // If confirming, update points for the user
-      if (newStatus === 'confirmado' && order) {
+      if (newStatus === 'confirmado' && order && order.user_id) {
         const { data: existingPoints } = await supabase
           .from('puntos_usuario')
           .select('*')
@@ -288,6 +309,15 @@ export default function Ordenes() {
       console.error('Error updating order:', error);
       toast.error('Error al actualizar pedido');
     }
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!paymentOrderId || !selectedPaymentMethod) return;
+    
+    setShowPaymentDialog(false);
+    await handleUpdateStatus(paymentOrderId, 'entregado', selectedPaymentMethod);
+    setPaymentOrderId(null);
+    setSelectedPaymentMethod('efectivo');
   };
 
   const handleCancelOrder = async () => {
@@ -414,6 +444,7 @@ export default function Ordenes() {
       case 'yape_plin': return { label: 'Yape/Plin', icon: QrCode, color: 'text-primary' };
       case 'efectivo': return { label: 'Efectivo', icon: Banknote, color: 'text-green-600' };
       case 'tarjeta': return { label: 'Tarjeta', icon: CreditCard, color: 'text-blue-600' };
+      case 'pago_pendiente': return { label: 'Pendiente', icon: Wallet, color: 'text-amber-600' };
       default: return { label: metodo, icon: DollarSign, color: 'text-muted-foreground' };
     }
   };
@@ -751,6 +782,10 @@ export default function Ordenes() {
             <Button variant="outline" size="sm" onClick={fetchOrders} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
+            <Button size="sm" onClick={() => setCrearPedidoOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Crear Pedido</span>
+            </Button>
           </div>
         </div>
 
@@ -892,6 +927,65 @@ export default function Ordenes() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Payment method dialog for pago_pendiente orders */}
+        <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Wallet className="h-5 w-5 text-primary" /> Registrar Pago
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-muted-foreground">
+                Selecciona el método de pago utilizado por el cliente:
+              </p>
+              <RadioGroup 
+                value={selectedPaymentMethod} 
+                onValueChange={setSelectedPaymentMethod}
+                className="space-y-3"
+              >
+                <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-secondary/50 cursor-pointer">
+                  <RadioGroupItem value="efectivo" id="efectivo" />
+                  <Label htmlFor="efectivo" className="flex items-center gap-2 cursor-pointer flex-1">
+                    <Banknote className="h-5 w-5 text-green-600" />
+                    Efectivo
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-secondary/50 cursor-pointer">
+                  <RadioGroupItem value="yape_plin" id="yape_plin" />
+                  <Label htmlFor="yape_plin" className="flex items-center gap-2 cursor-pointer flex-1">
+                    <QrCode className="h-5 w-5 text-primary" />
+                    Yape/Plin
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-secondary/50 cursor-pointer">
+                  <RadioGroupItem value="tarjeta" id="tarjeta" />
+                  <Label htmlFor="tarjeta" className="flex items-center gap-2 cursor-pointer flex-1">
+                    <CreditCard className="h-5 w-5 text-blue-600" />
+                    Tarjeta (POS)
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleConfirmPayment}>
+                Confirmar Entrega
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Crear pedido modal */}
+        <CrearPedidoModal 
+          open={crearPedidoOpen}
+          onOpenChange={setCrearPedidoOpen}
+          onOrderCreated={fetchOrders}
+          meseros={meseros}
+        />
 
       </div>
     </AdminLayout>
