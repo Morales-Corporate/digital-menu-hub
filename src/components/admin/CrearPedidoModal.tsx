@@ -8,20 +8,31 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Plus, Minus, Search, ShoppingCart, Trash2, UtensilsCrossed, 
-  User, Users, Hash
+  User, Users, Hash, Package
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
+import ComboSelector, { ComboCartItem } from './ComboSelector';
 
-interface CartItem {
+interface ProductCartItem {
+  type: 'product';
   id: string;
   nombre: string;
   precio: number;
   cantidad: number;
   imagen_url?: string | null;
 }
+
+interface ComboInCart {
+  type: 'combo';
+  id: string;
+  combo: ComboCartItem;
+}
+
+type CartEntry = ProductCartItem | ComboInCart;
 
 interface CrearPedidoModalProps {
   open: boolean;
@@ -37,12 +48,15 @@ export default function CrearPedidoModal({
   meseros 
 }: CrearPedidoModalProps) {
   const [step, setStep] = useState<'mesa' | 'productos' | 'confirmar'>('mesa');
+  const [productTab, setProductTab] = useState<'productos' | 'combos'>('productos');
+  const [showComboSelector, setShowComboSelector] = useState(false);
   const [numeroMesa, setNumeroMesa] = useState<string>('');
   const [nombreCliente, setNombreCliente] = useState('');
   const [meseroId, setMeseroId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartEntry[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedCategoria, setSelectedCategoria] = useState<string>('todas');
 
   // Fetch productos
   const { data: productos = [] } = useQuery({
@@ -74,8 +88,6 @@ export default function CrearPedidoModal({
     enabled: open
   });
 
-  const [selectedCategoria, setSelectedCategoria] = useState<string>('todas');
-
   const filteredProducts = useMemo(() => {
     return productos.filter(p => {
       const matchesSearch = p.nombre.toLowerCase().includes(searchTerm.toLowerCase());
@@ -86,15 +98,16 @@ export default function CrearPedidoModal({
 
   const addToCart = (producto: typeof productos[0]) => {
     setCart(prev => {
-      const existing = prev.find(item => item.id === producto.id);
-      if (existing) {
+      const existing = prev.find(item => item.type === 'product' && item.id === producto.id);
+      if (existing && existing.type === 'product') {
         return prev.map(item => 
-          item.id === producto.id 
+          item.type === 'product' && item.id === producto.id 
             ? { ...item, cantidad: item.cantidad + 1 } 
             : item
         );
       }
       return [...prev, { 
+        type: 'product' as const,
         id: producto.id, 
         nombre: producto.nombre, 
         precio: producto.precio,
@@ -104,11 +117,23 @@ export default function CrearPedidoModal({
     });
   };
 
+  const addComboToCart = (combo: ComboCartItem) => {
+    const comboId = `combo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    setCart(prev => [...prev, { type: 'combo' as const, id: comboId, combo }]);
+    setShowComboSelector(false);
+    toast.success(`${combo.menuNombre} agregado al pedido`);
+  };
+
   const updateQuantity = (id: string, delta: number) => {
     setCart(prev => {
       return prev
-        .map(item => item.id === id ? { ...item, cantidad: item.cantidad + delta } : item)
-        .filter(item => item.cantidad > 0);
+        .map(item => {
+          if (item.type === 'product' && item.id === id) {
+            return { ...item, cantidad: item.cantidad + delta };
+          }
+          return item;
+        })
+        .filter(item => item.type === 'combo' || (item.type === 'product' && item.cantidad > 0));
     });
   };
 
@@ -116,8 +141,21 @@ export default function CrearPedidoModal({
     setCart(prev => prev.filter(item => item.id !== id));
   };
 
-  const total = cart.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
-  const itemCount = cart.reduce((sum, item) => sum + item.cantidad, 0);
+  // Calculate totals
+  const { total, itemCount } = useMemo(() => {
+    let t = 0;
+    let c = 0;
+    for (const item of cart) {
+      if (item.type === 'product') {
+        t += item.precio * item.cantidad;
+        c += item.cantidad;
+      } else {
+        t += item.combo.totalFinal;
+        c += 1;
+      }
+    }
+    return { total: t, itemCount: c };
+  }, [cart]);
 
   const resetForm = () => {
     setStep('mesa');
@@ -127,6 +165,8 @@ export default function CrearPedidoModal({
     setSearchTerm('');
     setCart([]);
     setSelectedCategoria('todas');
+    setProductTab('productos');
+    setShowComboSelector(false);
   };
 
   const handleClose = () => {
@@ -149,7 +189,7 @@ export default function CrearPedidoModal({
           user_id: null,
           total: total,
           estado: 'pendiente',
-          metodo_pago: 'pago_pendiente', // Special status for waiter orders
+          metodo_pago: 'pago_pendiente',
           puntos_ganados: 0,
           numero_mesa: parseInt(numeroMesa),
           es_invitado: true,
@@ -161,13 +201,34 @@ export default function CrearPedidoModal({
 
       if (orderError) throw orderError;
 
-      // Create order items
-      const orderItems = cart.map(item => ({
-        orden_id: order.id,
-        producto_id: item.id,
-        cantidad: item.cantidad,
-        precio_unitario: item.precio
-      }));
+      // Create order items - flatten combos into individual products
+      const orderItems: { orden_id: string; producto_id: string; cantidad: number; precio_unitario: number }[] = [];
+      
+      for (const entry of cart) {
+        if (entry.type === 'product') {
+          orderItems.push({
+            orden_id: order.id,
+            producto_id: entry.id,
+            cantidad: entry.cantidad,
+            precio_unitario: entry.precio
+          });
+        } else {
+          // For combos, add each selected product
+          // Distribute the combo price proportionally or use base price + extras
+          const combo = entry.combo;
+          for (const sel of combo.selecciones) {
+            // Calculate price for this item: base share + extra
+            const baseShare = combo.precioBase / combo.selecciones.length;
+            const itemPrice = baseShare + sel.costoAdicional;
+            orderItems.push({
+              orden_id: order.id,
+              producto_id: sel.producto.id,
+              cantidad: 1,
+              precio_unitario: itemPrice
+            });
+          }
+        }
+      }
 
       const { error: itemsError } = await supabase
         .from('orden_items')
@@ -185,6 +246,28 @@ export default function CrearPedidoModal({
       setSubmitting(false);
     }
   };
+
+  // If showing combo selector, render that instead
+  if (step === 'productos' && showComboSelector) {
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" />
+              Armar Combo
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto py-4">
+            <ComboSelector 
+              onAddCombo={addComboToCart}
+              onCancel={() => setShowComboSelector(false)}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -266,65 +349,95 @@ export default function CrearPedidoModal({
           {/* Step 2: Productos */}
           {step === 'productos' && (
             <div className="space-y-4 px-1">
-              {/* Search and filter */}
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar producto..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todas">Todas</SelectItem>
-                    {categorias.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Tabs for Products vs Combos */}
+              <Tabs value={productTab} onValueChange={(v) => setProductTab(v as 'productos' | 'combos')}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="productos">
+                    <UtensilsCrossed className="h-4 w-4 mr-2" />
+                    Productos
+                  </TabsTrigger>
+                  <TabsTrigger value="combos">
+                    <Package className="h-4 w-4 mr-2" />
+                    Combos/Menús
+                  </TabsTrigger>
+                </TabsList>
 
-              {/* Products grid */}
-              <ScrollArea className="h-[280px]">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {filteredProducts.map(producto => {
-                    const inCart = cart.find(item => item.id === producto.id);
-                    return (
-                      <button
-                        key={producto.id}
-                        onClick={() => addToCart(producto)}
-                        className="relative flex flex-col items-center p-3 border rounded-lg hover:bg-secondary/50 transition-colors text-left"
-                      >
-                        {producto.imagen_url ? (
-                          <img 
-                            src={producto.imagen_url} 
-                            alt={producto.nombre}
-                            className="w-12 h-12 rounded-lg object-cover mb-2"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center mb-2">
-                            <UtensilsCrossed className="h-5 w-5 text-muted-foreground" />
-                          </div>
-                        )}
-                        <p className="text-xs font-medium text-center line-clamp-2">{producto.nombre}</p>
-                        <p className="text-xs text-primary font-bold">S/ {producto.precio.toFixed(2)}</p>
-                        
-                        {inCart && (
-                          <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
-                            {inCart.cantidad}
-                          </Badge>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
+                <TabsContent value="productos" className="space-y-4 mt-4">
+                  {/* Search and filter */}
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar producto..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todas">Todas</SelectItem>
+                        {categorias.map(c => (
+                          <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Products grid */}
+                  <ScrollArea className="h-[240px]">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {filteredProducts.map(producto => {
+                        const inCart = cart.find(item => item.type === 'product' && item.id === producto.id);
+                        const cantidad = inCart?.type === 'product' ? inCart.cantidad : 0;
+                        return (
+                          <button
+                            key={producto.id}
+                            onClick={() => addToCart(producto)}
+                            className="relative flex flex-col items-center p-3 border rounded-lg hover:bg-secondary/50 transition-colors text-left"
+                          >
+                            {producto.imagen_url ? (
+                              <img 
+                                src={producto.imagen_url} 
+                                alt={producto.nombre}
+                                className="w-12 h-12 rounded-lg object-cover mb-2"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center mb-2">
+                                <UtensilsCrossed className="h-5 w-5 text-muted-foreground" />
+                              </div>
+                            )}
+                            <p className="text-xs font-medium text-center line-clamp-2">{producto.nombre}</p>
+                            <p className="text-xs text-primary font-bold">S/ {producto.precio.toFixed(2)}</p>
+                            
+                            {cantidad > 0 && (
+                              <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
+                                {cantidad}
+                              </Badge>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="combos" className="mt-4">
+                  <div className="text-center py-8">
+                    <Package className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                    <p className="text-muted-foreground mb-4">
+                      Arma combos con precio especial (entrada + plato + bebida)
+                    </p>
+                    <Button onClick={() => setShowComboSelector(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Armar Combo
+                    </Button>
+                  </div>
+                </TabsContent>
+              </Tabs>
 
               {/* Mini cart */}
               {cart.length > 0 && (
@@ -335,38 +448,63 @@ export default function CrearPedidoModal({
                     </span>
                     <span className="font-bold">S/ {total.toFixed(2)}</span>
                   </div>
-                  <ScrollArea className="max-h-24">
+                  <ScrollArea className="max-h-32">
                     <div className="space-y-1">
                       {cart.map(item => (
                         <div key={item.id} className="flex items-center justify-between text-xs">
-                          <span className="truncate flex-1">{item.nombre}</span>
-                          <div className="flex items-center gap-1">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-5 w-5"
-                              onClick={(e) => { e.stopPropagation(); updateQuantity(item.id, -1); }}
-                            >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <span className="w-4 text-center">{item.cantidad}</span>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-5 w-5"
-                              onClick={(e) => { e.stopPropagation(); updateQuantity(item.id, 1); }}
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-5 w-5 text-destructive"
-                              onClick={(e) => { e.stopPropagation(); removeFromCart(item.id); }}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
+                          {item.type === 'product' ? (
+                            <>
+                              <span className="truncate flex-1">{item.nombre}</span>
+                              <div className="flex items-center gap-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-5 w-5"
+                                  onClick={(e) => { e.stopPropagation(); updateQuantity(item.id, -1); }}
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                                <span className="w-4 text-center">{item.cantidad}</span>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-5 w-5"
+                                  onClick={(e) => { e.stopPropagation(); updateQuantity(item.id, 1); }}
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-5 w-5 text-destructive"
+                                  onClick={(e) => { e.stopPropagation(); removeFromCart(item.id); }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex-1">
+                                <span className="font-medium">{item.combo.menuNombre}</span>
+                                <Badge variant="outline" className="ml-2 text-[10px]">Combo</Badge>
+                                <p className="text-muted-foreground text-[10px]">
+                                  {item.combo.selecciones.map(s => s.producto.nombre).join(' + ')}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="font-medium">S/ {item.combo.totalFinal.toFixed(2)}</span>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-5 w-5 text-destructive"
+                                  onClick={(e) => { e.stopPropagation(); removeFromCart(item.id); }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -405,12 +543,32 @@ export default function CrearPedidoModal({
               <Separator />
 
               <div>
-                <p className="text-sm font-medium mb-2">Productos ({itemCount})</p>
+                <p className="text-sm font-medium mb-2">Pedido ({itemCount} items)</p>
                 <div className="space-y-2">
                   {cart.map(item => (
-                    <div key={item.id} className="flex justify-between text-sm">
-                      <span>{item.nombre} x{item.cantidad}</span>
-                      <span className="font-medium">S/ {(item.precio * item.cantidad).toFixed(2)}</span>
+                    <div key={item.id} className="text-sm">
+                      {item.type === 'product' ? (
+                        <div className="flex justify-between">
+                          <span>{item.nombre} x{item.cantidad}</span>
+                          <span className="font-medium">S/ {(item.precio * item.cantidad).toFixed(2)}</span>
+                        </div>
+                      ) : (
+                        <div className="bg-secondary/30 p-2 rounded">
+                          <div className="flex justify-between font-medium">
+                            <span>{item.combo.menuNombre}</span>
+                            <span>S/ {item.combo.totalFinal.toFixed(2)}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {item.combo.selecciones.map((sel, idx) => (
+                              <span key={sel.opcionId}>
+                                {sel.opcionNombre}: {sel.producto.nombre}
+                                {sel.costoAdicional > 0 && ` (+S/${sel.costoAdicional.toFixed(2)})`}
+                                {idx < item.combo.selecciones.length - 1 && ' • '}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
