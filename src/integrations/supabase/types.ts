@@ -160,6 +160,123 @@ export type Database = {
           },
         ]
       }
+      menu_opcion_items: {
+        Row: {
+          categoria_id: string | null
+          costo_adicional: number | null
+          created_at: string | null
+          id: string
+          menu_opcion_id: string
+          producto_id: string | null
+        }
+        Insert: {
+          categoria_id?: string | null
+          costo_adicional?: number | null
+          created_at?: string | null
+          id?: string
+          menu_opcion_id: string
+          producto_id?: string | null
+        }
+        Update: {
+          categoria_id?: string | null
+          costo_adicional?: number | null
+          created_at?: string | null
+          id?: string
+          menu_opcion_id?: string
+          producto_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_opcion_items_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_opcion_items_menu_opcion_id_fkey"
+            columns: ["menu_opcion_id"]
+            isOneToOne: false
+            referencedRelation: "menu_opciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_opcion_items_producto_id_fkey"
+            columns: ["producto_id"]
+            isOneToOne: false
+            referencedRelation: "productos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_opciones: {
+        Row: {
+          cantidad: number | null
+          created_at: string | null
+          id: string
+          menu_id: string
+          nombre: string
+          orden: number | null
+        }
+        Insert: {
+          cantidad?: number | null
+          created_at?: string | null
+          id?: string
+          menu_id: string
+          nombre: string
+          orden?: number | null
+        }
+        Update: {
+          cantidad?: number | null
+          created_at?: string | null
+          id?: string
+          menu_id?: string
+          nombre?: string
+          orden?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_opciones_menu_id_fkey"
+            columns: ["menu_id"]
+            isOneToOne: false
+            referencedRelation: "menus"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menus: {
+        Row: {
+          activo: boolean | null
+          created_at: string | null
+          descripcion: string | null
+          id: string
+          imagen_url: string | null
+          nombre: string
+          precio: number
+          updated_at: string | null
+        }
+        Insert: {
+          activo?: boolean | null
+          created_at?: string | null
+          descripcion?: string | null
+          id?: string
+          imagen_url?: string | null
+          nombre: string
+          precio?: number
+          updated_at?: string | null
+        }
+        Update: {
+          activo?: boolean | null
+          created_at?: string | null
+          descripcion?: string | null
+          id?: string
+          imagen_url?: string | null
+          nombre?: string
+          precio?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       meseros: {
         Row: {
           activo: boolean | null

@@ -18,6 +18,7 @@ import EditarPerfil from "@/pages/EditarPerfil";
 import Recompensas from "@/pages/Recompensas";
 import AdminIndex from "@/pages/admin/AdminIndex";
 import Categorias from "@/pages/admin/Categorias";
+import Menus from "@/pages/admin/Menus";
 import Productos from "@/pages/admin/Productos";
 import Ordenes from "@/pages/admin/Ordenes";
 import Caja from "@/pages/admin/Caja";
@@ -86,6 +87,11 @@ const App = () => (
             <Route path="/admin/categorias" element={
               <ProtectedRoute requireAdmin>
                 <Categorias />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/menus" element={
+              <ProtectedRoute requireAdmin>
+                <Menus />
               </ProtectedRoute>
             } />
             <Route path="/admin/productos" element={
