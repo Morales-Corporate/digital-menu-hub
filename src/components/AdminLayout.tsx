@@ -31,6 +31,7 @@ const navItems = [
   { href: '/admin/meseros', label: 'Meseros', icon: Users },
   { href: '/admin/mesas', label: 'Mesas QR', icon: QrCode },
   { href: '/admin/categorias', label: 'Categorías', icon: UtensilsCrossed },
+  { href: '/admin/menus', label: 'Menús/Combos', icon: UtensilsCrossed },
   { href: '/admin/productos', label: 'Productos', icon: UtensilsCrossed },
   { href: '/admin/recompensas', label: 'Recompensas', icon: Gift },
   { href: '/', label: 'Ver Menú', icon: Eye, external: true },
