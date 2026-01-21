@@ -212,6 +212,7 @@ export type Database = {
       menu_opciones: {
         Row: {
           cantidad: number | null
+          categoria_id: string | null
           created_at: string | null
           id: string
           menu_id: string
@@ -220,6 +221,7 @@ export type Database = {
         }
         Insert: {
           cantidad?: number | null
+          categoria_id?: string | null
           created_at?: string | null
           id?: string
           menu_id: string
@@ -228,6 +230,7 @@ export type Database = {
         }
         Update: {
           cantidad?: number | null
+          categoria_id?: string | null
           created_at?: string | null
           id?: string
           menu_id?: string
@@ -235,6 +238,13 @@ export type Database = {
           orden?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "menu_opciones_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "categorias"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "menu_opciones_menu_id_fkey"
             columns: ["menu_id"]

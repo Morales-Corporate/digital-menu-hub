@@ -11,7 +11,6 @@ import { Plus, Trash2, Loader2, GripVertical, FolderOpen, DollarSign } from 'luc
 import { Tables } from '@/integrations/supabase/types';
 
 type Menu = Tables<'menus'>;
-type MenuOpcion = Tables<'menu_opciones'>;
 type Categoria = Tables<'categorias'>;
 type Producto = Tables<'productos'>;
 
@@ -20,9 +19,17 @@ interface MenuOpcionesEditorProps {
   onClose: () => void;
 }
 
-type OpcionWithCategoria = MenuOpcion & {
+// Tipo manual para menu_opciones con categoria_id (nuevo campo)
+interface MenuOpcionWithCategoriaId {
+  id: string;
+  menu_id: string;
+  nombre: string;
+  orden: number | null;
+  cantidad: number | null;
+  created_at: string | null;
+  categoria_id: string | null;
   categoria?: Categoria | null;
-};
+}
 
 // Productos con costo extra para esta opción
 interface ProductoCostoExtra {
@@ -53,7 +60,7 @@ export default function MenuOpcionesEditor({ menu, onClose }: MenuOpcionesEditor
       
       if (opcionesError) throw opcionesError;
       
-      return (opcionesData || []) as OpcionWithCategoria[];
+      return (opcionesData || []) as MenuOpcionWithCategoriaId[];
     },
   });
 
@@ -299,7 +306,7 @@ export default function MenuOpcionesEditor({ menu, onClose }: MenuOpcionesEditor
 
 // Componente para cada subclasificación
 interface SubclasificacionCardProps {
-  opcion: OpcionWithCategoria;
+  opcion: MenuOpcionWithCategoriaId;
   categoriaNombre: string;
   productosDeCategoria: Producto[];
   extrasDeOpcion: ProductoCostoExtra[];

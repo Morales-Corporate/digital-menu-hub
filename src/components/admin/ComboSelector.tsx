@@ -7,34 +7,38 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { 
-  ChevronLeft, Check, UtensilsCrossed, AlertCircle, 
+  ChevronLeft, Check, UtensilsCrossed, 
   Loader2, Plus, Package
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tables } from '@/integrations/supabase/types';
 
 type Menu = Tables<'menus'>;
-type MenuOpcion = Tables<'menu_opciones'>;
 type Producto = Tables<'productos'>;
 type Categoria = Tables<'categorias'>;
 
-interface MenuOpcionItem {
+// Tipo manual para menu_opciones con categoria_id
+interface MenuOpcionWithCategoriaId {
+  id: string;
+  menu_id: string;
+  nombre: string;
+  orden: number | null;
+  cantidad: number | null;
+  created_at: string | null;
+  categoria_id: string | null;
+  categoria?: Categoria | null;
+}
+
+// Productos con costo extra específico
+interface ProductoCostoExtra {
   id: string;
   menu_opcion_id: string;
-  categoria_id: string | null;
   producto_id: string | null;
   costo_adicional: number | null;
 }
 
-interface OpcionWithItems extends MenuOpcion {
-  items: (MenuOpcionItem & {
-    categoria?: Categoria | null;
-    producto?: Producto | null;
-  })[];
-}
-
 interface MenuWithOpciones extends Menu {
-  opciones: OpcionWithItems[];
+  opciones: MenuOpcionWithCategoriaId[];
 }
 
 // Selected product for a combo slot
@@ -76,36 +80,24 @@ export default function ComboSelector({ onAddCombo, onCancel }: ComboSelectorPro
       
       if (menusError) throw menusError;
       
-      // Fetch options for each menu
+      // Fetch options for each menu with categoria
       const menusWithOpciones: MenuWithOpciones[] = await Promise.all(
         (menusData || []).map(async (menu) => {
           const { data: opciones, error: opcionesError } = await supabase
             .from('menu_opciones')
-            .select('*')
+            .select(`
+              *,
+              categoria:categorias(*)
+            `)
             .eq('menu_id', menu.id)
             .order('orden');
           
           if (opcionesError) throw opcionesError;
           
-          // Fetch items for each option
-          const opcionesWithItems: OpcionWithItems[] = await Promise.all(
-            (opciones || []).map(async (opcion) => {
-              const { data: items, error: itemsError } = await supabase
-                .from('menu_opcion_items')
-                .select(`
-                  *,
-                  categoria:categorias(*),
-                  producto:productos(*)
-                `)
-                .eq('menu_opcion_id', opcion.id);
-              
-              if (itemsError) throw itemsError;
-              
-              return { ...opcion, items: items || [] };
-            })
-          );
-          
-          return { ...menu, opciones: opcionesWithItems };
+          return { 
+            ...menu, 
+            opciones: (opciones || []) as MenuOpcionWithCategoriaId[] 
+          };
         })
       );
       
@@ -129,49 +121,47 @@ export default function ComboSelector({ onAddCombo, onCancel }: ComboSelectorPro
     enabled: !!selectedMenu,
   });
 
+  // Fetch extra costs for products in options
+  const { data: productosCostoExtra = [] } = useQuery({
+    queryKey: ['productos-costo-extra', selectedMenu?.id],
+    queryFn: async () => {
+      if (!selectedMenu) return [];
+      const opcionIds = selectedMenu.opciones.map(o => o.id);
+      
+      const { data, error } = await supabase
+        .from('menu_opcion_items')
+        .select('*')
+        .in('menu_opcion_id', opcionIds)
+        .not('producto_id', 'is', null);
+      
+      if (error) throw error;
+      return (data || []) as ProductoCostoExtra[];
+    },
+    enabled: !!selectedMenu,
+  });
+
   // Get available products for current option
   const currentOpcion = selectedMenu?.opciones[currentOpcionIndex];
   
   const availableProducts = useMemo(() => {
-    if (!currentOpcion) return [];
+    if (!currentOpcion || !currentOpcion.categoria_id) return [];
     
-    const products: { producto: Producto; costoAdicional: number }[] = [];
+    // Get all products from the category
+    const categoryProducts = allProductos.filter(
+      p => p.categoria_id === currentOpcion.categoria_id
+    );
     
-    for (const item of currentOpcion.items) {
-      if (item.producto) {
-        // Direct product
-        products.push({
-          producto: item.producto,
-          costoAdicional: Number(item.costo_adicional || 0)
-        });
-      } else if (item.categoria_id) {
-        // All products from category
-        const categoryProducts = allProductos.filter(
-          p => p.categoria_id === item.categoria_id
-        );
-        for (const prod of categoryProducts) {
-          // Check if there's a specific override for this product
-          const specificItem = currentOpcion.items.find(
-            i => i.producto_id === prod.id
-          );
-          products.push({
-            producto: prod,
-            costoAdicional: specificItem 
-              ? Number(specificItem.costo_adicional || 0)
-              : Number(item.costo_adicional || 0)
-          });
-        }
-      }
-    }
-    
-    // Remove duplicates (prefer specific product items over category)
-    const seen = new Set<string>();
-    return products.filter(p => {
-      if (seen.has(p.producto.id)) return false;
-      seen.add(p.producto.id);
-      return true;
+    // Map products with their extra cost (if any)
+    return categoryProducts.map(producto => {
+      const extraCostItem = productosCostoExtra.find(
+        e => e.menu_opcion_id === currentOpcion.id && e.producto_id === producto.id
+      );
+      return {
+        producto,
+        costoAdicional: Number(extraCostItem?.costo_adicional || 0)
+      };
     });
-  }, [currentOpcion, allProductos]);
+  }, [currentOpcion, allProductos, productosCostoExtra]);
 
   const handleSelectProduct = (producto: Producto, costoAdicional: number) => {
     if (!currentOpcion) return;
@@ -185,7 +175,7 @@ export default function ComboSelector({ onAddCombo, onCancel }: ComboSelectorPro
     });
     setSelections(newSelections);
     
-    // Move to next option or finish
+    // Move to next option or stay
     if (selectedMenu && currentOpcionIndex < selectedMenu.opciones.length - 1) {
       setCurrentOpcionIndex(prev => prev + 1);
     }
@@ -280,9 +270,13 @@ export default function ComboSelector({ onAddCombo, onCancel }: ComboSelectorPro
                         {menu.descripcion}
                       </p>
                     )}
-                    <p className="text-sm text-muted-foreground">
-                      {menu.opciones.length} opciones a elegir
-                    </p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {menu.opciones.map(op => (
+                        <Badge key={op.id} variant="outline" className="text-xs">
+                          {op.nombre}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-bold text-primary">
@@ -374,6 +368,11 @@ export default function ComboSelector({ onAddCombo, onCancel }: ComboSelectorPro
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               {currentOpcion.nombre}
+              {currentOpcion.categoria && (
+                <Badge variant="outline" className="font-normal text-xs">
+                  {currentOpcion.categoria.nombre}
+                </Badge>
+              )}
               {selections.has(currentOpcion.id) && (
                 <Badge variant="secondary" className="font-normal">
                   <Check className="h-3 w-3 mr-1" />
@@ -383,49 +382,55 @@ export default function ComboSelector({ onAddCombo, onCancel }: ComboSelectorPro
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[200px]">
-              <div className="grid grid-cols-2 gap-2">
-                {availableProducts.map(({ producto, costoAdicional }) => {
-                  const isChosen = selections.get(currentOpcion.id)?.producto.id === producto.id;
-                  return (
-                    <button
-                      key={producto.id}
-                      onClick={() => handleSelectProduct(producto, costoAdicional)}
-                      className={`relative flex flex-col items-center p-3 border rounded-lg transition-all text-left ${
-                        isChosen 
-                          ? 'border-primary bg-primary/5 ring-1 ring-primary' 
-                          : 'hover:bg-secondary/50'
-                      }`}
-                    >
-                      {producto.imagen_url ? (
-                        <img 
-                          src={producto.imagen_url} 
-                          alt={producto.nombre}
-                          className="w-12 h-12 rounded-lg object-cover mb-2"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center mb-2">
-                          <Package className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                      )}
-                      <p className="text-xs font-medium text-center line-clamp-2">
-                        {producto.nombre}
-                      </p>
-                      {costoAdicional > 0 && (
-                        <Badge variant="outline" className="mt-1 text-[10px]">
-                          +S/ {costoAdicional.toFixed(2)}
-                        </Badge>
-                      )}
-                      {isChosen && (
-                        <div className="absolute top-1 right-1 bg-primary rounded-full p-0.5">
-                          <Check className="h-3 w-3 text-primary-foreground" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </ScrollArea>
+            {availableProducts.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No hay productos disponibles en esta categoría
+              </p>
+            ) : (
+              <ScrollArea className="h-[200px]">
+                <div className="grid grid-cols-2 gap-2">
+                  {availableProducts.map(({ producto, costoAdicional }) => {
+                    const isChosen = selections.get(currentOpcion.id)?.producto.id === producto.id;
+                    return (
+                      <button
+                        key={producto.id}
+                        onClick={() => handleSelectProduct(producto, costoAdicional)}
+                        className={`relative flex flex-col items-center p-3 border rounded-lg transition-all text-left ${
+                          isChosen 
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary' 
+                            : 'hover:bg-secondary/50'
+                        }`}
+                      >
+                        {producto.imagen_url ? (
+                          <img 
+                            src={producto.imagen_url} 
+                            alt={producto.nombre}
+                            className="w-12 h-12 rounded-lg object-cover mb-2"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center mb-2">
+                            <Package className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <p className="text-xs font-medium text-center line-clamp-2">
+                          {producto.nombre}
+                        </p>
+                        {costoAdicional > 0 && (
+                          <Badge variant="outline" className="mt-1 text-[10px]">
+                            +S/ {costoAdicional.toFixed(2)}
+                          </Badge>
+                        )}
+                        {isChosen && (
+                          <div className="absolute top-1 right-1 bg-primary rounded-full p-0.5">
+                            <Check className="h-3 w-3 text-primary-foreground" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            )}
           </CardContent>
         </Card>
       )}
