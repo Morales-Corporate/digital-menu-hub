@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import ComboSelector, { ComboCartItem } from './ComboSelector';
+import ProductosPorCategoria from './ProductosPorCategoria';
 
 interface ProductCartItem {
   type: 'product';
@@ -74,16 +75,16 @@ export default function CrearPedidoModal({
     enabled: open
   });
 
-  // Fetch categorías
+  // Fetch categorías with parent_id for hierarchy
   const { data: categorias = [] } = useQuery({
-    queryKey: ['categorias'],
+    queryKey: ['categorias-jerarquicas'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('categorias')
-        .select('id, nombre')
+        .select('id, nombre, parent_id, orden')
         .order('orden');
       if (error) throw error;
-      return data;
+      return data as { id: string; nombre: string; parent_id: string | null; orden: number | null }[];
     },
     enabled: open
   });
@@ -363,66 +364,64 @@ export default function CrearPedidoModal({
                 </TabsList>
 
                 <TabsContent value="productos" className="space-y-4 mt-4">
-                  {/* Search and filter */}
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Buscar producto..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                    <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
-                      <SelectTrigger className="w-40">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="todas">Todas</SelectItem>
-                        {categorias.map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  {/* Search filter */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar producto..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
                   </div>
 
-                  {/* Products grid */}
-                  <ScrollArea className="h-[240px]">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {filteredProducts.map(producto => {
-                        const inCart = cart.find(item => item.type === 'product' && item.id === producto.id);
-                        const cantidad = inCart?.type === 'product' ? inCart.cantidad : 0;
-                        return (
-                          <button
-                            key={producto.id}
-                            onClick={() => addToCart(producto)}
-                            className="relative flex flex-col items-center p-3 border rounded-lg hover:bg-secondary/50 transition-colors text-left"
-                          >
-                            {producto.imagen_url ? (
-                              <img 
-                                src={producto.imagen_url} 
-                                alt={producto.nombre}
-                                className="w-12 h-12 rounded-lg object-cover mb-2"
-                              />
-                            ) : (
-                              <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center mb-2">
-                                <UtensilsCrossed className="h-5 w-5 text-muted-foreground" />
-                              </div>
-                            )}
-                            <p className="text-xs font-medium text-center line-clamp-2">{producto.nombre}</p>
-                            <p className="text-xs text-primary font-bold">S/ {producto.precio.toFixed(2)}</p>
-                            
-                            {cantidad > 0 && (
-                              <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
-                                {cantidad}
-                              </Badge>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </ScrollArea>
+                  {/* Products organized by category hierarchy */}
+                  {searchTerm ? (
+                    // Show flat filtered results when searching
+                    <ScrollArea className="h-[280px]">
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                        {filteredProducts.map(producto => {
+                          const inCart = cart.find(item => item.type === 'product' && item.id === producto.id);
+                          const cantidad = inCart?.type === 'product' ? inCart.cantidad : 0;
+                          return (
+                            <button
+                              key={producto.id}
+                              onClick={() => addToCart(producto)}
+                              className="relative flex flex-col items-center p-3 border rounded-lg hover:bg-secondary/50 transition-colors text-left"
+                            >
+                              {producto.imagen_url ? (
+                                <img 
+                                  src={producto.imagen_url} 
+                                  alt={producto.nombre}
+                                  className="w-10 h-10 rounded-lg object-cover mb-2"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center mb-2">
+                                  <UtensilsCrossed className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                              )}
+                              <p className="text-xs font-medium text-center line-clamp-2">{producto.nombre}</p>
+                              <p className="text-xs text-primary font-bold">S/ {producto.precio.toFixed(2)}</p>
+                              
+                              {cantidad > 0 && (
+                                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
+                                  {cantidad}
+                                </Badge>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </ScrollArea>
+                  ) : (
+                    // Show hierarchical view when not searching
+                    <ProductosPorCategoria
+                      productos={productos}
+                      categorias={categorias}
+                      cart={cart.filter(c => c.type === 'product').map(c => ({ type: 'product' as const, id: c.id, cantidad: (c as ProductCartItem).cantidad }))}
+                      onAddProduct={addToCart}
+                    />
+                  )}
                 </TabsContent>
 
                 <TabsContent value="combos" className="mt-4">

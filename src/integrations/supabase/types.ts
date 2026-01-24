@@ -58,20 +58,31 @@ export type Database = {
           id: string
           nombre: string
           orden: number | null
+          parent_id: string | null
         }
         Insert: {
           created_at?: string | null
           id?: string
           nombre: string
           orden?: number | null
+          parent_id?: string | null
         }
         Update: {
           created_at?: string | null
           id?: string
           nombre?: string
           orden?: number | null
+          parent_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "categorias_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categorias"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cierres_caja: {
         Row: {
