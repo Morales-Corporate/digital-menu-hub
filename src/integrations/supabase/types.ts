@@ -472,6 +472,7 @@ export type Database = {
           id: string
           imagen_url: string | null
           ingredientes: string | null
+          is_combo_item: boolean | null
           nombre: string
           precio: number
           stock: number | null
@@ -486,6 +487,7 @@ export type Database = {
           id?: string
           imagen_url?: string | null
           ingredientes?: string | null
+          is_combo_item?: boolean | null
           nombre: string
           precio?: number
           stock?: number | null
@@ -500,6 +502,7 @@ export type Database = {
           id?: string
           imagen_url?: string | null
           ingredientes?: string | null
+          is_combo_item?: boolean | null
           nombre?: string
           precio?: number
           stock?: number | null
