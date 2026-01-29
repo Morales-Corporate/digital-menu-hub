@@ -33,20 +33,56 @@ export default function ProductosPorCategoria({
   cart,
   onAddProduct
 }: ProductosPorCategoriaProps) {
-  // Organize categories into hierarchy
+  // Organize categories into hierarchy - only include categories that have products
   const { rootCategories, childrenMap, productosByCategoria, uncategorizedProducts } = useMemo(() => {
+    // Group products by categoria_id first to know which categories have products
+    const prodsByCategoria: Record<string, Producto[]> = {};
+    const uncategorized: Producto[] = [];
+    const categoriesWithProducts = new Set<string>();
+    
+    for (const prod of productos) {
+      if (prod.categoria_id) {
+        if (!prodsByCategoria[prod.categoria_id]) {
+          prodsByCategoria[prod.categoria_id] = [];
+        }
+        prodsByCategoria[prod.categoria_id].push(prod);
+        categoriesWithProducts.add(prod.categoria_id);
+      } else {
+        uncategorized.push(prod);
+      }
+    }
+    
+    // Build a set of parent categories that should be shown
+    // (categories that have products in themselves or in their children)
+    const parentsToShow = new Set<string>();
+    for (const cat of categorias) {
+      if (categoriesWithProducts.has(cat.id) && cat.parent_id) {
+        parentsToShow.add(cat.parent_id);
+      }
+    }
+    
     // Separate root categories (parent_id = null) from subcategories
+    // Only include categories that have products or have children with products
     const roots: Categoria[] = [];
     const children: Record<string, Categoria[]> = {};
     
     for (const cat of categorias) {
+      const hasProducts = categoriesWithProducts.has(cat.id);
+      const hasChildrenWithProducts = parentsToShow.has(cat.id);
+      
       if (cat.parent_id === null) {
-        roots.push(cat);
-      } else {
-        if (!children[cat.parent_id]) {
-          children[cat.parent_id] = [];
+        // Root category - include if it has products or children with products
+        if (hasProducts || hasChildrenWithProducts) {
+          roots.push(cat);
         }
-        children[cat.parent_id].push(cat);
+      } else {
+        // Child category - only include if it has products
+        if (hasProducts) {
+          if (!children[cat.parent_id]) {
+            children[cat.parent_id] = [];
+          }
+          children[cat.parent_id].push(cat);
+        }
       }
     }
     
@@ -56,21 +92,6 @@ export default function ProductosPorCategoria({
     // Sort children by orden
     for (const parentId of Object.keys(children)) {
       children[parentId].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
-    }
-    
-    // Group products by categoria_id
-    const prodsByCategoria: Record<string, Producto[]> = {};
-    const uncategorized: Producto[] = [];
-    
-    for (const prod of productos) {
-      if (prod.categoria_id) {
-        if (!prodsByCategoria[prod.categoria_id]) {
-          prodsByCategoria[prod.categoria_id] = [];
-        }
-        prodsByCategoria[prod.categoria_id].push(prod);
-      } else {
-        uncategorized.push(prod);
-      }
     }
     
     return {
