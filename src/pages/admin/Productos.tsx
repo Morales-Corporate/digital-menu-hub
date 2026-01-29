@@ -15,6 +15,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Loader2, ImageIcon, Package } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Tables } from '@/integrations/supabase/types';
 
 type Producto = Tables<'productos'>;
@@ -28,6 +29,7 @@ const productoSchema = z.object({
   categoria_id: z.string().optional(),
   disponible: z.boolean(),
   stock: z.number().min(0, 'El stock debe ser positivo').nullable(),
+  is_combo_item: z.boolean(),
 });
 
 type ProductoFormData = z.infer<typeof productoSchema>;
@@ -46,7 +48,8 @@ export default function Productos() {
       imagen_url: '', 
       categoria_id: undefined,
       disponible: true,
-      stock: null
+      stock: null,
+      is_combo_item: false
     },
   });
 
@@ -84,6 +87,7 @@ export default function Productos() {
         descripcion: data.descripcion || null,
         categoria_id: data.categoria_id || null,
         stock: data.stock,
+        is_combo_item: data.is_combo_item,
       };
       const { error } = await supabase.from('productos').insert([insertData]);
       if (error) throw error;
@@ -106,6 +110,7 @@ export default function Productos() {
         descripcion: data.descripcion || null,
         categoria_id: data.categoria_id || null,
         stock: data.stock,
+        is_combo_item: data.is_combo_item,
       };
       const { error } = await supabase.from('productos').update(updateData).eq('id', id);
       if (error) throw error;
@@ -139,7 +144,8 @@ export default function Productos() {
       imagen_url: '', 
       categoria_id: undefined,
       disponible: true,
-      stock: null
+      stock: null,
+      is_combo_item: false
     });
     setDialogOpen(true);
   };
@@ -154,6 +160,7 @@ export default function Productos() {
       categoria_id: producto.categoria_id ?? undefined,
       disponible: producto.disponible ?? true,
       stock: producto.stock ?? null,
+      is_combo_item: (producto as any).is_combo_item ?? false,
     });
     setDialogOpen(true);
   };
@@ -343,6 +350,29 @@ export default function Productos() {
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="is_combo_item"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-4 border-dashed border-primary/50 bg-primary/5">
+                        <div>
+                          <FormLabel className="text-base flex items-center gap-2">
+                            <Package className="h-4 w-4 text-primary" />
+                            Producto para Menú/Combo
+                          </FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            Solo visible en la pestaña Combos/Menús al tomar pedido
+                          </p>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
                   <div className="flex justify-end gap-2 pt-4">
                     <Button type="button" variant="outline" onClick={closeDialog}>
                       Cancelar
@@ -408,6 +438,13 @@ export default function Productos() {
                         <Package className="h-3 w-3" />
                         {producto.stock}
                       </span>
+                    </div>
+                  )}
+                  {(producto as any).is_combo_item && (
+                    <div className="absolute top-2 left-2">
+                      <Badge className="text-[10px] bg-primary/90">
+                        Menú/Combo
+                      </Badge>
                     </div>
                   )}
                 </div>

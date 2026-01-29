@@ -59,13 +59,13 @@ export default function CrearPedidoModal({
   const [submitting, setSubmitting] = useState(false);
   const [selectedCategoria, setSelectedCategoria] = useState<string>('todas');
 
-  // Fetch productos
+  // Fetch productos (excluding combo items for main product list)
   const { data: productos = [] } = useQuery({
     queryKey: ['productos-disponibles'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('productos')
-        .select('id, nombre, precio, imagen_url, categoria_id, stock')
+        .select('id, nombre, precio, imagen_url, categoria_id, stock, is_combo_item')
         .eq('disponible', true)
         .or('stock.is.null,stock.gt.0')
         .order('nombre');
@@ -74,6 +74,11 @@ export default function CrearPedidoModal({
     },
     enabled: open
   });
+
+  // Filter out combo items for the main product list
+  const regularProducts = useMemo(() => {
+    return productos.filter(p => !p.is_combo_item);
+  }, [productos]);
 
   // Fetch categorías with parent_id for hierarchy
   const { data: categorias = [] } = useQuery({
@@ -90,12 +95,12 @@ export default function CrearPedidoModal({
   });
 
   const filteredProducts = useMemo(() => {
-    return productos.filter(p => {
+    return regularProducts.filter(p => {
       const matchesSearch = p.nombre.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategoria = selectedCategoria === 'todas' || p.categoria_id === selectedCategoria;
       return matchesSearch && matchesCategoria;
     });
-  }, [productos, searchTerm, selectedCategoria]);
+  }, [regularProducts, searchTerm, selectedCategoria]);
 
   const addToCart = (producto: typeof productos[0]) => {
     setCart(prev => {
@@ -414,9 +419,9 @@ export default function CrearPedidoModal({
                       </div>
                     </ScrollArea>
                   ) : (
-                    // Show hierarchical view when not searching
+                    // Show hierarchical view when not searching (excluding combo items)
                     <ProductosPorCategoria
-                      productos={productos}
+                      productos={regularProducts}
                       categorias={categorias}
                       cart={cart.filter(c => c.type === 'product').map(c => ({ type: 'product' as const, id: c.id, cantidad: (c as ProductCartItem).cantidad }))}
                       onAddProduct={addToCart}
