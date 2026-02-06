@@ -123,6 +123,125 @@ export type Database = {
         }
         Relationships: []
       }
+      comprobantes: {
+        Row: {
+          anulado: boolean | null
+          cliente_direccion: string | null
+          cliente_documento: string | null
+          cliente_nombre: string | null
+          cliente_razon_social: string | null
+          cliente_ruc: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          igv: number
+          numero: number
+          orden_id: string | null
+          serie: string
+          subtotal: number
+          tipo: string
+          total: number
+        }
+        Insert: {
+          anulado?: boolean | null
+          cliente_direccion?: string | null
+          cliente_documento?: string | null
+          cliente_nombre?: string | null
+          cliente_razon_social?: string | null
+          cliente_ruc?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          igv?: number
+          numero: number
+          orden_id?: string | null
+          serie: string
+          subtotal?: number
+          tipo: string
+          total?: number
+        }
+        Update: {
+          anulado?: boolean | null
+          cliente_direccion?: string | null
+          cliente_documento?: string | null
+          cliente_nombre?: string | null
+          cliente_razon_social?: string | null
+          cliente_ruc?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          igv?: number
+          numero?: number
+          orden_id?: string | null
+          serie?: string
+          subtotal?: number
+          tipo?: string
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comprobantes_orden_id_fkey"
+            columns: ["orden_id"]
+            isOneToOne: false
+            referencedRelation: "ordenes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      configuracion_empresa: {
+        Row: {
+          created_at: string | null
+          direccion: string | null
+          email: string | null
+          id: string
+          logo_url: string | null
+          mensaje_pie: string | null
+          nombre_comercial: string
+          numero_boleta: number | null
+          numero_factura: number | null
+          razon_social: string | null
+          ruc: string | null
+          serie_boleta: string | null
+          serie_factura: string | null
+          telefono: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          direccion?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          mensaje_pie?: string | null
+          nombre_comercial: string
+          numero_boleta?: number | null
+          numero_factura?: number | null
+          razon_social?: string | null
+          ruc?: string | null
+          serie_boleta?: string | null
+          serie_factura?: string | null
+          telefono?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          direccion?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          mensaje_pie?: string | null
+          nombre_comercial?: string
+          numero_boleta?: number | null
+          numero_factura?: number | null
+          razon_social?: string | null
+          ruc?: string | null
+          serie_boleta?: string | null
+          serie_factura?: string | null
+          telefono?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       descuentos_activos: {
         Row: {
           created_at: string | null

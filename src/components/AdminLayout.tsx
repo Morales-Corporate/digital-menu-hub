@@ -16,7 +16,8 @@ import {
   Wallet,
   QrCode,
   BarChart3,
-  Users
+  Users,
+  Settings
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -34,6 +35,7 @@ const navItems = [
   { href: '/admin/menus', label: 'Menús/Combos', icon: UtensilsCrossed },
   { href: '/admin/productos', label: 'Productos', icon: UtensilsCrossed },
   { href: '/admin/recompensas', label: 'Recompensas', icon: Gift },
+  { href: '/admin/configuracion', label: 'Configuración', icon: Settings },
   { href: '/', label: 'Ver Menú', icon: Eye, external: true },
 ];
 
