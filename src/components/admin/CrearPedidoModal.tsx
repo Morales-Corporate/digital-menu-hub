@@ -94,6 +94,30 @@ export default function CrearPedidoModal({
     enabled: open
   });
 
+  // Filter categories to only include those with at least one non-combo product
+  const categoriesForRegularProducts = useMemo(() => {
+    // Get all category IDs that have at least one non-combo product
+    const categoriesWithRegularProducts = new Set<string>();
+    for (const product of regularProducts) {
+      if (product.categoria_id) {
+        categoriesWithRegularProducts.add(product.categoria_id);
+      }
+    }
+    
+    // Also include parent categories of those that have regular products
+    const parentsToInclude = new Set<string>();
+    for (const cat of categorias) {
+      if (categoriesWithRegularProducts.has(cat.id) && cat.parent_id) {
+        parentsToInclude.add(cat.parent_id);
+      }
+    }
+    
+    // Filter categories: include if has regular products OR has children with regular products
+    return categorias.filter(cat => 
+      categoriesWithRegularProducts.has(cat.id) || parentsToInclude.has(cat.id)
+    );
+  }, [categorias, regularProducts]);
+
   const filteredProducts = useMemo(() => {
     return regularProducts.filter(p => {
       const matchesSearch = p.nombre.toLowerCase().includes(searchTerm.toLowerCase());
@@ -419,10 +443,10 @@ export default function CrearPedidoModal({
                       </div>
                     </ScrollArea>
                   ) : (
-                    // Show hierarchical view when not searching (excluding combo items)
+                    // Show hierarchical view when not searching (excluding combo items and their categories)
                     <ProductosPorCategoria
                       productos={regularProducts}
-                      categorias={categorias}
+                      categorias={categoriesForRegularProducts}
                       cart={cart.filter(c => c.type === 'product').map(c => ({ type: 'product' as const, id: c.id, cantidad: (c as ProductCartItem).cantidad }))}
                       onAddProduct={addToCart}
                     />
