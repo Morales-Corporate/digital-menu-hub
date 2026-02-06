@@ -26,6 +26,7 @@ import Mesas from "@/pages/admin/Mesas";
 import Meseros from "@/pages/admin/Meseros";
 import RecompensasAdmin from "@/pages/admin/Recompensas";
 import Estadisticas from "@/pages/admin/Estadisticas";
+import Configuracion from "@/pages/admin/Configuracion";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -127,6 +128,11 @@ const App = () => (
             <Route path="/admin/meseros" element={
               <ProtectedRoute requireAdmin>
                 <Meseros />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/configuracion" element={
+              <ProtectedRoute requireAdmin>
+                <Configuracion />
               </ProtectedRoute>
             } />
             

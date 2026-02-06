@@ -15,13 +15,14 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { 
   CheckCircle, Clock, Eye, RefreshCw, Image as ImageIcon, Truck, Package, 
   MapPin, Phone, User, Banknote, CreditCard, QrCode, XCircle, AlertTriangle,
-  DollarSign, UtensilsCrossed, Users, Plus, Wallet
+  DollarSign, UtensilsCrossed, Users, Plus, Wallet, FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, differenceInMinutes, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
 import CrearPedidoModal from '@/components/admin/CrearPedidoModal';
+import EmitirComprobanteModal from '@/components/admin/EmitirComprobanteModal';
 
 interface OrderItem {
   id: string;
@@ -94,6 +95,10 @@ export default function Ordenes() {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentOrderId, setPaymentOrderId] = useState<string | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('efectivo');
+  
+  // Comprobante emission state
+  const [showComprobanteModal, setShowComprobanteModal] = useState(false);
+  const [ordenParaComprobante, setOrdenParaComprobante] = useState<Order | null>(null);
 
   // Fetch meseros activos
   const { data: meseros = [] } = useQuery({
@@ -715,6 +720,19 @@ export default function Ordenes() {
                       <ImageIcon className="h-4 w-4" />
                     </Button>
                   )}
+                  {order.estado === 'entregado' && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setOrdenParaComprobante(order);
+                        setShowComprobanteModal(true);
+                      }}
+                    >
+                      <FileText className="h-4 w-4 mr-1" />
+                      Boleta/Factura
+                    </Button>
+                  )}
                   {order.estado !== 'entregado' && order.estado !== 'cancelado' && (
                     <Button 
                       variant="outline" 
@@ -985,6 +1003,13 @@ export default function Ordenes() {
           onOpenChange={setCrearPedidoOpen}
           onOrderCreated={fetchOrders}
           meseros={meseros}
+        />
+
+        {/* Emitir comprobante modal */}
+        <EmitirComprobanteModal
+          open={showComprobanteModal}
+          onOpenChange={setShowComprobanteModal}
+          orden={ordenParaComprobante}
         />
 
       </div>
