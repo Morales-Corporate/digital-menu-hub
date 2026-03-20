@@ -33,9 +33,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (data && data.length > 0) {
       const roles = data.map(r => r.role as UserRole);
-      // Prioritize: admin > mesero > user
+      // Prioritize: admin > mesero > cocina > user
       if (roles.includes('admin')) setRole('admin');
       else if (roles.includes('mesero')) setRole('mesero');
+      else if (roles.includes('cocina')) setRole('cocina');
       else setRole('user');
     } else {
       setRole('user');
