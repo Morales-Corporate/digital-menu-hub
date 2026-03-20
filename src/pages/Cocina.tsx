@@ -102,7 +102,8 @@ export default function Cocina() {
   });
 
   const getNextEstado = (estado: string) => {
-    if (estado === 'pendiente') return 'en_preparacion';
+    if (estado === 'pendiente') return 'confirmado';
+    if (estado === 'confirmado') return 'en_preparacion';
     if (estado === 'en_preparacion') return 'listo';
     return null;
   };
