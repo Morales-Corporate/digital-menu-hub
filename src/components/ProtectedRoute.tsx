@@ -42,5 +42,9 @@ export default function ProtectedRoute({ children, requireAdmin = false, require
     return <Navigate to="/" replace />;
   }
 
+  if (requireCocina && !isCocina && !isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
   return <>{children}</>;
 }

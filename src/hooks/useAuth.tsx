@@ -113,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role,
       isAdmin: role === 'admin',
       isMesero: role === 'mesero',
+      isCocina: role === 'cocina',
       signIn,
       signUp,
       signOut
