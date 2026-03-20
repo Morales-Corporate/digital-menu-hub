@@ -15,7 +15,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { 
   CheckCircle, Clock, Eye, RefreshCw, Image as ImageIcon, Truck, Package, 
   MapPin, Phone, User, Banknote, CreditCard, QrCode, XCircle, AlertTriangle,
-  DollarSign, UtensilsCrossed, Users, Plus, Wallet, FileText
+  DollarSign, UtensilsCrossed, Users, Plus, Wallet, FileText, ChefHat
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, differenceInMinutes, parseISO } from 'date-fns';
