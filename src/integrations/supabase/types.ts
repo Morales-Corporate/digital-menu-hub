@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      aperturas_caja: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          diferencia: number | null
+          efectivo_esperado: number
+          efectivo_real: number | null
+          estado: string
+          fecha_apertura: string
+          fecha_cierre: string | null
+          id: string
+          monto_inicial: number
+          observacion: string | null
+          ordenes_canceladas: number
+          ordenes_entregadas: number
+          tipo_apertura: string
+          tipo_cierre: string | null
+          total_efectivo: number
+          total_retiros: number
+          total_tarjeta: number
+          total_ventas: number
+          total_yape_plin: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          diferencia?: number | null
+          efectivo_esperado?: number
+          efectivo_real?: number | null
+          estado?: string
+          fecha_apertura?: string
+          fecha_cierre?: string | null
+          id?: string
+          monto_inicial?: number
+          observacion?: string | null
+          ordenes_canceladas?: number
+          ordenes_entregadas?: number
+          tipo_apertura?: string
+          tipo_cierre?: string | null
+          total_efectivo?: number
+          total_retiros?: number
+          total_tarjeta?: number
+          total_ventas?: number
+          total_yape_plin?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          diferencia?: number | null
+          efectivo_esperado?: number
+          efectivo_real?: number | null
+          estado?: string
+          fecha_apertura?: string
+          fecha_cierre?: string | null
+          id?: string
+          monto_inicial?: number
+          observacion?: string | null
+          ordenes_canceladas?: number
+          ordenes_entregadas?: number
+          tipo_apertura?: string
+          tipo_cierre?: string | null
+          total_efectivo?: number
+          total_retiros?: number
+          total_tarjeta?: number
+          total_ventas?: number
+          total_yape_plin?: number
+        }
+        Relationships: []
+      }
       asignacion_mesas: {
         Row: {
           created_at: string | null
