@@ -44,10 +44,14 @@ export default function Auth() {
   });
 
   useEffect(() => {
-    if (user) {
-      navigate('/admin');
+    if (user && role) {
+      if (role === 'mesero') {
+        navigate('/mesero');
+      } else {
+        navigate('/admin');
+      }
     }
-  }, [user, navigate]);
+  }, [user, role, navigate]);
 
   const handleLogin = async (data: LoginFormData) => {
     setIsSubmitting(true);
