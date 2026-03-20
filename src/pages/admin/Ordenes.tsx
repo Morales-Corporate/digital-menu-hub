@@ -62,13 +62,14 @@ interface Order {
   orden_items: OrderItem[];
 }
 
-const ORDER_STATES = ['pendiente', 'confirmado', 'en_preparacion', 'en_camino', 'entregado', 'cancelado'] as const;
+const ORDER_STATES = ['pendiente', 'confirmado', 'en_preparacion', 'listo', 'en_camino', 'entregado', 'cancelado'] as const;
 type OrderState = typeof ORDER_STATES[number];
 
 const STATE_CONFIG: Record<OrderState, { label: string; icon: React.ElementType; color: string; bgColor: string; borderColor: string }> = {
   pendiente: { label: 'Pendiente', icon: Clock, color: 'text-amber-800', bgColor: 'bg-amber-100', borderColor: 'border-amber-300' },
   confirmado: { label: 'Confirmado', icon: CheckCircle, color: 'text-blue-800', bgColor: 'bg-blue-100', borderColor: 'border-blue-300' },
   en_preparacion: { label: 'En Preparación', icon: UtensilsCrossed, color: 'text-orange-800', bgColor: 'bg-orange-100', borderColor: 'border-orange-300' },
+  listo: { label: 'Listo', icon: ChefHat, color: 'text-teal-800', bgColor: 'bg-teal-100', borderColor: 'border-teal-300' },
   en_camino: { label: 'En Camino', icon: Truck, color: 'text-purple-800', bgColor: 'bg-purple-100', borderColor: 'border-purple-300' },
   entregado: { label: 'Entregado', icon: Package, color: 'text-green-800', bgColor: 'bg-green-100', borderColor: 'border-green-300' },
   cancelado: { label: 'Cancelado', icon: XCircle, color: 'text-red-800', bgColor: 'bg-red-100', borderColor: 'border-red-300' },
