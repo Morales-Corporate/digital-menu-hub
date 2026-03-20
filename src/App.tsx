@@ -48,6 +48,13 @@ const App = () => (
             <Route path="/checkout-invitado" element={<CheckoutInvitado />} />
             <Route path="/auth" element={<Auth />} />
             
+            {/* Mesero route */}
+            <Route path="/mesero" element={
+              <ProtectedRoute requireMesero>
+                <ModoMesero />
+              </ProtectedRoute>
+            } />
+            
             {/* User routes - protected */}
             <Route path="/mi-cuenta" element={
               <ProtectedRoute>
