@@ -44,12 +44,27 @@ export default function Roles() {
   const { data: roles = [], isLoading } = useQuery({
     queryKey: ['user-roles-admin'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
-        .select('id, user_id, role, profiles(email, full_name)')
+        .select('id, user_id, role')
         .order('role');
-      if (error) throw error;
-      return data as unknown as UserRoleRow[];
+      if (rolesError) throw rolesError;
+      if (!rolesData || rolesData.length === 0) return [];
+
+      const userIds = [...new Set(rolesData.map(r => r.user_id))];
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, email, full_name')
+        .in('id', userIds);
+
+      const profileMap = new Map(
+        (profilesData || []).map(p => [p.id, { email: p.email, full_name: p.full_name }])
+      );
+
+      return rolesData.map(r => ({
+        ...r,
+        profiles: profileMap.get(r.user_id) || null,
+      })) as UserRoleRow[];
     },
   });
 
