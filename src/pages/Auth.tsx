@@ -30,7 +30,7 @@ type SignUpFormData = z.infer<typeof signUpSchema>;
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user, signIn, signUp } = useAuth();
+  const { user, role, signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
   const loginForm = useForm<LoginFormData>({
