@@ -132,7 +132,7 @@ export default function AdminIndex() {
         return true;
       }) || [];
 
-      const newCounts: OrderCounts = { pendiente: 0, confirmado: 0, en_camino: 0, entregado: 0 };
+      const newCounts: OrderCounts = { pendiente: 0, confirmado: 0, en_preparacion: 0, listo: 0, en_camino: 0, entregado: 0 };
       visibleOrders.forEach(order => {
         if (order.estado in newCounts) {
           newCounts[order.estado as keyof OrderCounts]++;
