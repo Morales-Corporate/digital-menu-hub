@@ -66,7 +66,7 @@ export default function Auth() {
       }
     } else {
       toast.success('¡Bienvenido!');
-      navigate('/admin');
+      // useEffect handles redirect based on role
     }
   };
 
