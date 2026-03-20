@@ -45,10 +45,14 @@ export default function Auth() {
 
   useEffect(() => {
     if (user && role) {
-      if (role === 'mesero') {
-        navigate('/mesero');
-      } else {
+      if (role === 'admin') {
         navigate('/admin');
+      } else if (role === 'mesero') {
+        navigate('/mesero');
+      } else if (role === 'cocina') {
+        navigate('/cocina');
+      } else {
+        navigate('/');
       }
     }
   }, [user, role, navigate]);
