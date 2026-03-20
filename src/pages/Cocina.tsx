@@ -141,7 +141,7 @@ export default function Cocina() {
           <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
           {ESTADOS_COCINA.map(estado => {
             const config = estadoConfig[estado];
             const Icon = config.icon;
