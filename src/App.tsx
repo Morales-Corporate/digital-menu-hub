@@ -56,6 +56,13 @@ const App = () => (
               </ProtectedRoute>
             } />
             
+            {/* Cocina route */}
+            <Route path="/cocina" element={
+              <ProtectedRoute requireCocina>
+                <Cocina />
+              </ProtectedRoute>
+            } />
+            
             {/* User routes - protected */}
             <Route path="/mi-cuenta" element={
               <ProtectedRoute>
