@@ -485,24 +485,25 @@ export default function Ordenes() {
     );
   };
 
-  const getDateKeyLima = (date: string | Date) => {
-    const d = typeof date === 'string' ? new Date(date) : date;
-    return new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Lima',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(d);
-  };
+  // Get current open caja session
+  const { data: cajaAbiertaAdmin } = useQuery({
+    queryKey: ['caja-abierta-ordenes-admin'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('aperturas_caja')
+        .select('id, fecha_apertura')
+        .eq('estado', 'abierta')
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    refetchInterval: 30000,
+  });
 
-  const todayKey = getDateKeyLima(new Date());
-
-  // Pedidos visibles en Gestión (solo HOY, y no mostrar si hoy ya tuvo cierre)
+  // Pedidos visibles: solo los creados después de la apertura de caja actual
   const visibleOrders = orders.filter((order) => {
-    const orderDateKey = getDateKeyLima(order.created_at);
-    if (orderDateKey !== todayKey) return false;
-    if (closedDates.includes(orderDateKey)) return false;
-    return true;
+    if (!cajaAbiertaAdmin?.fecha_apertura) return false;
+    return new Date(order.created_at) >= new Date(cajaAbiertaAdmin.fecha_apertura);
   });
 
   const filteredOrders = visibleOrders.filter((order) => order.estado === activeTab);
