@@ -192,7 +192,7 @@ export default function Cocina() {
                             onClick={() => updateEstado.mutate({ id: orden.id, estado: next })}
                             disabled={updateEstado.isPending}
                           >
-                            {next === 'en_preparacion' ? 'Iniciar preparación' : 'Marcar como listo'}
+                            {next === 'confirmado' ? 'Confirmar' : next === 'en_preparacion' ? 'Iniciar preparación' : 'Marcar como listo'}
                           </Button>
                         )}
                       </CardContent>
