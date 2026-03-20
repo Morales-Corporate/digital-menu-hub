@@ -16,7 +16,9 @@ import {
   Calendar,
   TrendingUp,
   TrendingDown,
-  DollarSign
+  DollarSign,
+  UtensilsCrossed,
+  ChefHat
 } from 'lucide-react';
 import { format, differenceInMinutes, parseISO, startOfDay, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
