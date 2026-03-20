@@ -25,10 +25,11 @@ type OrdenConItems = {
   }[];
 };
 
-const ESTADOS_COCINA = ['pendiente', 'en_preparacion', 'listo'] as const;
+const ESTADOS_COCINA = ['pendiente', 'confirmado', 'en_preparacion', 'listo'] as const;
 
 const estadoConfig = {
   pendiente: { label: 'Pendiente', icon: Clock, color: 'bg-amber-500/10 text-amber-700 border-amber-200' },
+  confirmado: { label: 'Confirmado', icon: Clock, color: 'bg-blue-500/10 text-blue-700 border-blue-200' },
   en_preparacion: { label: 'En preparación', icon: Flame, color: 'bg-orange-500/10 text-orange-700 border-orange-200' },
   listo: { label: 'Listo', icon: CheckCircle2, color: 'bg-emerald-500/10 text-emerald-700 border-emerald-200' },
 };
@@ -62,7 +63,7 @@ export default function Cocina() {
           id, numero_mesa, estado, created_at, nombre_invitado,
           orden_items(id, cantidad, producto_id, productos(nombre))
         `)
-        .in('estado', ['pendiente', 'en_preparacion', 'listo'])
+        .in('estado', ['pendiente', 'confirmado', 'en_preparacion', 'listo'])
         .order('created_at', { ascending: true });
 
       if (cajaAbierta?.fecha_apertura) {
@@ -101,7 +102,8 @@ export default function Cocina() {
   });
 
   const getNextEstado = (estado: string) => {
-    if (estado === 'pendiente') return 'en_preparacion';
+    if (estado === 'pendiente') return 'confirmado';
+    if (estado === 'confirmado') return 'en_preparacion';
     if (estado === 'en_preparacion') return 'listo';
     return null;
   };
@@ -139,7 +141,7 @@ export default function Cocina() {
           <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
           {ESTADOS_COCINA.map(estado => {
             const config = estadoConfig[estado];
             const Icon = config.icon;
@@ -190,7 +192,7 @@ export default function Cocina() {
                             onClick={() => updateEstado.mutate({ id: orden.id, estado: next })}
                             disabled={updateEstado.isPending}
                           >
-                            {next === 'en_preparacion' ? 'Iniciar preparación' : 'Marcar como listo'}
+                            {next === 'confirmado' ? 'Confirmar' : next === 'en_preparacion' ? 'Iniciar preparación' : 'Marcar como listo'}
                           </Button>
                         )}
                       </CardContent>
