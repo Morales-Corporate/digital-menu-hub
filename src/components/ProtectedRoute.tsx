@@ -9,8 +9,8 @@ interface ProtectedRouteProps {
   requireCocina?: boolean;
 }
 
-export default function ProtectedRoute({ children, requireAdmin = false, requireMesero = false }: ProtectedRouteProps) {
-  const { user, loading, isAdmin, isMesero, role } = useAuth();
+export default function ProtectedRoute({ children, requireAdmin = false, requireMesero = false, requireCocina = false }: ProtectedRouteProps) {
+  const { user, loading, isAdmin, isMesero, isCocina, role } = useAuth();
   const location = useLocation();
 
   if (loading) {
