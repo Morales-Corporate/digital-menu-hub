@@ -28,11 +28,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', userId)
-      .maybeSingle();
+      .eq('user_id', userId);
     
-    if (data?.role) {
-      setRole(data.role as UserRole);
+    if (data && data.length > 0) {
+      const roles = data.map(r => r.role as UserRole);
+      // Prioritize: admin > mesero > user
+      if (roles.includes('admin')) setRole('admin');
+      else if (roles.includes('mesero')) setRole('mesero');
+      else setRole('user');
     } else {
       setRole('user');
     }
