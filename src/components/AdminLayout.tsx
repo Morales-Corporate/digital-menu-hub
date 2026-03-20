@@ -17,7 +17,8 @@ import {
   QrCode,
   BarChart3,
   Users,
-  Settings
+  Settings,
+  ShieldCheck
 } from 'lucide-react';
 
 interface AdminLayoutProps {
