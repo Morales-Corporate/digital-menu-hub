@@ -48,7 +48,7 @@ export default function ModoMesero() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('aperturas_caja')
-        .select('id')
+        .select('id, fecha_apertura')
         .eq('estado', 'abierta')
         .maybeSingle();
       if (error) throw error;
