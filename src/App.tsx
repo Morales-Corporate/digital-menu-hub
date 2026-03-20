@@ -17,6 +17,7 @@ import CompletarPerfil from "@/pages/CompletarPerfil";
 import EditarPerfil from "@/pages/EditarPerfil";
 import Recompensas from "@/pages/Recompensas";
 import ModoMesero from "@/pages/ModoMesero";
+import Cocina from "@/pages/Cocina";
 import AdminIndex from "@/pages/admin/AdminIndex";
 import Categorias from "@/pages/admin/Categorias";
 import Menus from "@/pages/admin/Menus";
@@ -52,6 +53,13 @@ const App = () => (
             <Route path="/mesero" element={
               <ProtectedRoute requireMesero>
                 <ModoMesero />
+              </ProtectedRoute>
+            } />
+            
+            {/* Cocina route */}
+            <Route path="/cocina" element={
+              <ProtectedRoute requireCocina>
+                <Cocina />
               </ProtectedRoute>
             } />
             

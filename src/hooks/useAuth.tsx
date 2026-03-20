@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-type UserRole = 'admin' | 'user' | 'mesero';
+type UserRole = 'admin' | 'user' | 'mesero' | 'cocina';
 
 interface AuthContextType {
   user: User | null;
@@ -11,6 +11,7 @@ interface AuthContextType {
   role: UserRole | null;
   isAdmin: boolean;
   isMesero: boolean;
+  isCocina: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -32,9 +33,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (data && data.length > 0) {
       const roles = data.map(r => r.role as UserRole);
-      // Prioritize: admin > mesero > user
+      // Prioritize: admin > mesero > cocina > user
       if (roles.includes('admin')) setRole('admin');
       else if (roles.includes('mesero')) setRole('mesero');
+      else if (roles.includes('cocina')) setRole('cocina');
       else setRole('user');
     } else {
       setRole('user');
@@ -111,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role,
       isAdmin: role === 'admin',
       isMesero: role === 'mesero',
+      isCocina: role === 'cocina',
       signIn,
       signUp,
       signOut
