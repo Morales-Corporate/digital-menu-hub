@@ -6,6 +6,7 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
   requireMesero?: boolean;
+  requireCocina?: boolean;
 }
 
 export default function ProtectedRoute({ children, requireAdmin = false, requireMesero = false }: ProtectedRouteProps) {
