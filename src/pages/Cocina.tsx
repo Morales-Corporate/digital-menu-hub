@@ -63,7 +63,7 @@ export default function Cocina() {
           id, numero_mesa, estado, created_at, nombre_invitado,
           orden_items(id, cantidad, producto_id, productos(nombre))
         `)
-        .in('estado', ['pendiente', 'en_preparacion', 'listo'])
+        .in('estado', ['pendiente', 'confirmado', 'en_preparacion', 'listo'])
         .order('created_at', { ascending: true });
 
       if (cajaAbierta?.fecha_apertura) {
