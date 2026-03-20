@@ -77,7 +77,7 @@ export default function ModoMesero() {
 
   // Fetch active orders filtered by current caja session
   const { data: activeOrders = [] } = useQuery({
-    queryKey: ['ordenes-activas-mesero', cajaAbierta?.id],
+    queryKey: ['ordenes-activas-mesero', cajaAbierta?.fecha_apertura],
     queryFn: async () => {
       let query = supabase
         .from('ordenes')
@@ -86,15 +86,8 @@ export default function ModoMesero() {
         .not('numero_mesa', 'is', null)
         .order('created_at', { ascending: false });
 
-      if (cajaAbierta) {
-        const { data: cajaData } = await supabase
-          .from('aperturas_caja')
-          .select('fecha_apertura')
-          .eq('id', cajaAbierta.id)
-          .single();
-        if (cajaData?.fecha_apertura) {
-          query = query.gte('created_at', cajaData.fecha_apertura);
-        }
+      if (cajaAbierta?.fecha_apertura) {
+        query = query.gte('created_at', cajaAbierta.fecha_apertura);
       }
 
       const { data, error } = await query;
