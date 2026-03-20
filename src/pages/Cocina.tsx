@@ -38,10 +38,25 @@ export default function Cocina() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: ordenes = [], isLoading } = useQuery({
-    queryKey: ['ordenes-cocina'],
+  // Get current open caja session
+  const { data: cajaAbierta } = useQuery({
+    queryKey: ['caja-abierta-cocina'],
     queryFn: async () => {
       const { data, error } = await supabase
+        .from('aperturas_caja')
+        .select('id, fecha_apertura')
+        .eq('estado', 'abierta')
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    refetchInterval: 30000,
+  });
+
+  const { data: ordenes = [], isLoading } = useQuery({
+    queryKey: ['ordenes-cocina', cajaAbierta?.fecha_apertura],
+    queryFn: async () => {
+      let query = supabase
         .from('ordenes')
         .select(`
           id, numero_mesa, estado, created_at, nombre_invitado,
@@ -49,10 +64,17 @@ export default function Cocina() {
         `)
         .in('estado', ['pendiente', 'en_preparacion', 'listo'])
         .order('created_at', { ascending: true });
+
+      if (cajaAbierta?.fecha_apertura) {
+        query = query.gte('created_at', cajaAbierta.fecha_apertura);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return (data as unknown as OrdenConItems[]) ?? [];
     },
     refetchInterval: 5000,
+    enabled: !!cajaAbierta,
   });
 
   // Realtime subscription

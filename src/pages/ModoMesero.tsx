@@ -48,7 +48,7 @@ export default function ModoMesero() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('aperturas_caja')
-        .select('id')
+        .select('id, fecha_apertura')
         .eq('estado', 'abierta')
         .maybeSingle();
       if (error) throw error;
@@ -75,20 +75,27 @@ export default function ModoMesero() {
   // Get total mesas from config (use Mesas page default of 10)
   const totalMesas = 20;
 
-  // Fetch active orders to know which mesas are occupied
+  // Fetch active orders filtered by current caja session
   const { data: activeOrders = [] } = useQuery({
-    queryKey: ['ordenes-activas-mesero'],
+    queryKey: ['ordenes-activas-mesero', cajaAbierta?.fecha_apertura],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('ordenes')
         .select('id, numero_mesa, estado, total, created_at')
         .in('estado', ['pendiente', 'confirmado', 'en_preparacion'])
         .not('numero_mesa', 'is', null)
         .order('created_at', { ascending: false });
+
+      if (cajaAbierta?.fecha_apertura) {
+        query = query.gte('created_at', cajaAbierta.fecha_apertura);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
     refetchInterval: 15000,
+    enabled: !!cajaAbierta,
   });
 
   // Fetch productos
