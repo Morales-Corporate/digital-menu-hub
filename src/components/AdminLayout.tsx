@@ -36,7 +36,7 @@ const navItems = [
   { href: '/admin/menus', label: 'Menús/Combos', icon: UtensilsCrossed },
   { href: '/admin/productos', label: 'Productos', icon: UtensilsCrossed },
   { href: '/admin/recompensas', label: 'Recompensas', icon: Gift },
-  { href: '/admin/roles', label: 'Roles', icon: Settings },
+  { href: '/admin/roles', label: 'Roles', icon: ShieldCheck },
   { href: '/admin/configuracion', label: 'Configuración', icon: Settings },
   { href: '/', label: 'Ver Menú', icon: Eye, external: true },
   { href: '/mesero', label: 'Modo Mesero', icon: Users, external: true },
