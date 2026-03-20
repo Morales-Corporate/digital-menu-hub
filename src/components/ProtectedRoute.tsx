@@ -5,10 +5,11 @@ import { Loader2 } from 'lucide-react';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
+  requireMesero?: boolean;
 }
 
-export default function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
-  const { user, loading, isAdmin, role } = useAuth();
+export default function ProtectedRoute({ children, requireAdmin = false, requireMesero = false }: ProtectedRouteProps) {
+  const { user, loading, isAdmin, isMesero, role } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -24,7 +25,7 @@ export default function ProtectedRoute({ children, requireAdmin = false }: Prote
   }
 
   // Wait for role to be fetched
-  if (requireAdmin && role === null) {
+  if ((requireAdmin || requireMesero) && role === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -33,6 +34,10 @@ export default function ProtectedRoute({ children, requireAdmin = false }: Prote
   }
 
   if (requireAdmin && !isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (requireMesero && !isMesero && !isAdmin) {
     return <Navigate to="/" replace />;
   }
 

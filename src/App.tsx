@@ -16,6 +16,7 @@ import Checkout from "@/pages/Checkout";
 import CompletarPerfil from "@/pages/CompletarPerfil";
 import EditarPerfil from "@/pages/EditarPerfil";
 import Recompensas from "@/pages/Recompensas";
+import ModoMesero from "@/pages/ModoMesero";
 import AdminIndex from "@/pages/admin/AdminIndex";
 import Categorias from "@/pages/admin/Categorias";
 import Menus from "@/pages/admin/Menus";
@@ -46,6 +47,13 @@ const App = () => (
             <Route path="/mesa/:numero" element={<MenuMesa />} />
             <Route path="/checkout-invitado" element={<CheckoutInvitado />} />
             <Route path="/auth" element={<Auth />} />
+            
+            {/* Mesero route */}
+            <Route path="/mesero" element={
+              <ProtectedRoute requireMesero>
+                <ModoMesero />
+              </ProtectedRoute>
+            } />
             
             {/* User routes - protected */}
             <Route path="/mi-cuenta" element={

@@ -494,6 +494,7 @@ export type Database = {
           nombre: string
           telefono: string | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           activo?: boolean | null
@@ -502,6 +503,7 @@ export type Database = {
           nombre: string
           telefono?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           activo?: boolean | null
@@ -510,6 +512,7 @@ export type Database = {
           nombre?: string
           telefono?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
