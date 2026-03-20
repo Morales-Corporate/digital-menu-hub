@@ -26,6 +26,8 @@ import { es } from 'date-fns/locale';
 interface OrderCounts {
   pendiente: number;
   confirmado: number;
+  en_preparacion: number;
+  listo: number;
   en_camino: number;
   entregado: number;
 }
