@@ -16,7 +16,9 @@ import {
   Calendar,
   TrendingUp,
   TrendingDown,
-  DollarSign
+  DollarSign,
+  UtensilsCrossed,
+  ChefHat
 } from 'lucide-react';
 import { format, differenceInMinutes, parseISO, startOfDay, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -24,6 +26,8 @@ import { es } from 'date-fns/locale';
 interface OrderCounts {
   pendiente: number;
   confirmado: number;
+  en_preparacion: number;
+  listo: number;
   en_camino: number;
   entregado: number;
 }
@@ -46,7 +50,7 @@ interface DailySummary {
 }
 
 export default function AdminIndex() {
-  const [counts, setCounts] = useState<OrderCounts>({ pendiente: 0, confirmado: 0, en_camino: 0, entregado: 0 });
+  const [counts, setCounts] = useState<OrderCounts>({ pendiente: 0, confirmado: 0, en_preparacion: 0, listo: 0, en_camino: 0, entregado: 0 });
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -128,7 +132,7 @@ export default function AdminIndex() {
         return true;
       }) || [];
 
-      const newCounts: OrderCounts = { pendiente: 0, confirmado: 0, en_camino: 0, entregado: 0 };
+      const newCounts: OrderCounts = { pendiente: 0, confirmado: 0, en_preparacion: 0, listo: 0, en_camino: 0, entregado: 0 };
       visibleOrders.forEach(order => {
         if (order.estado in newCounts) {
           newCounts[order.estado as keyof OrderCounts]++;
@@ -314,7 +318,7 @@ export default function AdminIndex() {
         </Card>
 
         {/* Status cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           <StatusCard 
             title="Pendientes" 
             count={counts.pendiente} 
@@ -328,6 +332,20 @@ export default function AdminIndex() {
             icon={CheckCircle}
             color="text-blue-600"
             bgColor="bg-blue-100"
+          />
+          <StatusCard 
+            title="En Preparación" 
+            count={counts.en_preparacion} 
+            icon={UtensilsCrossed}
+            color="text-orange-600"
+            bgColor="bg-orange-100"
+          />
+          <StatusCard 
+            title="Listos" 
+            count={counts.listo} 
+            icon={ChefHat}
+            color="text-teal-600"
+            bgColor="bg-teal-100"
           />
           <StatusCard 
             title="En Camino" 
