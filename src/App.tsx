@@ -30,6 +30,7 @@ import RecompensasAdmin from "@/pages/admin/Recompensas";
 import Estadisticas from "@/pages/admin/Estadisticas";
 import Configuracion from "@/pages/admin/Configuracion";
 import Roles from "@/pages/admin/Roles";
+import Insumos from "@/pages/admin/Insumos";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
