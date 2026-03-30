@@ -161,7 +161,7 @@ export default function Caja() {
       const apertura = new Date(cajaAbierta.fecha_apertura).toISOString();
       const ahora = new Date().toISOString();
 
-      const [ordResult, movResult] = await Promise.all([
+      const [ordResult, movResult, pendResult] = await Promise.all([
         supabase
           .from('ordenes')
           .select('id, total, estado, metodo_pago')
@@ -173,13 +173,20 @@ export default function Caja() {
           .select('*')
           .gte('created_at', apertura)
           .lte('created_at', ahora),
+        supabase
+          .from('ordenes')
+          .select('id, estado, numero_mesa, nombre_invitado, total')
+          .gte('created_at', apertura)
+          .in('estado', ['pendiente', 'confirmado', 'en_preparacion', 'listo']),
       ]);
 
       if (ordResult.error) throw ordResult.error;
       if (movResult.error) throw movResult.error;
+      if (pendResult.error) throw pendResult.error;
 
       setOrdersCierre(ordResult.data || []);
       setMovimientosCierre(movResult.data || []);
+      setOrdenesPendientes(pendResult.data || []);
     } catch (error: any) {
       console.error('Error:', error);
       toast.error('Error al cargar resumen');
