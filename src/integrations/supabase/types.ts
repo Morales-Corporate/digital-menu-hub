@@ -14,6 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
+      alertas_stock: {
+        Row: {
+          created_at: string | null
+          id: string
+          insumo_id: string
+          leida: boolean
+          mensaje: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          insumo_id: string
+          leida?: boolean
+          mensaje: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          insumo_id?: string
+          leida?: boolean
+          mensaje?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alertas_stock_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alertas_stock_config: {
+        Row: {
+          created_at: string | null
+          email_destino: string | null
+          id: string
+          notificar_email: boolean
+          notificar_sistema: boolean
+          umbral_porcentaje: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email_destino?: string | null
+          id?: string
+          notificar_email?: boolean
+          notificar_sistema?: boolean
+          umbral_porcentaje?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email_destino?: string | null
+          id?: string
+          notificar_email?: boolean
+          notificar_sistema?: boolean
+          umbral_porcentaje?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       aperturas_caja: {
         Row: {
           created_at: string
@@ -192,6 +254,50 @@ export type Database = {
         }
         Relationships: []
       }
+      compras_insumos: {
+        Row: {
+          cantidad: number
+          costo_total: number
+          costo_unitario: number
+          created_at: string | null
+          created_by: string | null
+          id: string
+          insumo_id: string
+          nota: string | null
+          proveedor: string | null
+        }
+        Insert: {
+          cantidad: number
+          costo_total?: number
+          costo_unitario?: number
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          insumo_id: string
+          nota?: string | null
+          proveedor?: string | null
+        }
+        Update: {
+          cantidad?: number
+          costo_total?: number
+          costo_unitario?: number
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          insumo_id?: string
+          nota?: string | null
+          proveedor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compras_insumos_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comprobantes: {
         Row: {
           anulado: boolean | null
@@ -358,6 +464,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      insumos: {
+        Row: {
+          costo_por_unidad: number
+          created_at: string | null
+          id: string
+          nombre: string
+          stock_actual: number
+          stock_minimo: number
+          unidad_medida: string
+          updated_at: string | null
+        }
+        Insert: {
+          costo_por_unidad?: number
+          created_at?: string | null
+          id?: string
+          nombre: string
+          stock_actual?: number
+          stock_minimo?: number
+          unidad_medida?: string
+          updated_at?: string | null
+        }
+        Update: {
+          costo_por_unidad?: number
+          created_at?: string | null
+          id?: string
+          nombre?: string
+          stock_actual?: number
+          stock_minimo?: number
+          unidad_medida?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       menu_opcion_items: {
         Row: {
@@ -655,6 +794,45 @@ export type Database = {
             columns: ["mesero_id"]
             isOneToOne: false
             referencedRelation: "meseros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      producto_insumos: {
+        Row: {
+          cantidad: number
+          created_at: string | null
+          id: string
+          insumo_id: string
+          producto_id: string
+        }
+        Insert: {
+          cantidad?: number
+          created_at?: string | null
+          id?: string
+          insumo_id: string
+          producto_id: string
+        }
+        Update: {
+          cantidad?: number
+          created_at?: string | null
+          id?: string
+          insumo_id?: string
+          producto_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "producto_insumos_insumo_id_fkey"
+            columns: ["insumo_id"]
+            isOneToOne: false
+            referencedRelation: "insumos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "producto_insumos_producto_id_fkey"
+            columns: ["producto_id"]
+            isOneToOne: false
+            referencedRelation: "productos"
             referencedColumns: ["id"]
           },
         ]
