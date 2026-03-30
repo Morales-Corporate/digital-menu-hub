@@ -30,6 +30,7 @@ import RecompensasAdmin from "@/pages/admin/Recompensas";
 import Estadisticas from "@/pages/admin/Estadisticas";
 import Configuracion from "@/pages/admin/Configuracion";
 import Roles from "@/pages/admin/Roles";
+import Insumos from "@/pages/admin/Insumos";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -155,6 +156,11 @@ const App = () => (
             <Route path="/admin/roles" element={
               <ProtectedRoute requireAdmin>
                 <Roles />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/insumos" element={
+              <ProtectedRoute requireAdmin>
+                <Insumos />
               </ProtectedRoute>
             } />
             
