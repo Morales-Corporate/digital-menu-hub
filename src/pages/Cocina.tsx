@@ -17,10 +17,12 @@ type OrdenConItems = {
   estado: string;
   created_at: string | null;
   nombre_invitado: string | null;
+  notas: string | null;
   orden_items: {
     id: string;
     cantidad: number;
     producto_id: string | null;
+    nota: string | null;
     productos: { nombre: string } | null;
   }[];
 };
@@ -60,8 +62,8 @@ export default function Cocina() {
       let query = supabase
         .from('ordenes')
         .select(`
-          id, numero_mesa, estado, created_at, nombre_invitado,
-          orden_items(id, cantidad, producto_id, productos(nombre))
+          id, numero_mesa, estado, created_at, nombre_invitado, notas,
+          orden_items(id, cantidad, producto_id, nota, productos(nombre))
         `)
         .in('estado', ['pendiente', 'confirmado', 'en_preparacion', 'listo'])
         .order('created_at', { ascending: true });
@@ -178,12 +180,20 @@ export default function Cocina() {
                       <CardContent className="px-4 pb-3 space-y-2">
                         <ul className="space-y-1">
                           {orden.orden_items.map(item => (
-                            <li key={item.id} className="flex items-center gap-2 text-sm">
-                              <span className="font-medium min-w-[1.5rem] text-center">{item.cantidad}×</span>
-                              <span>{item.productos?.nombre ?? 'Producto eliminado'}</span>
+                            <li key={item.id} className="text-sm">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium min-w-[1.5rem] text-center">{item.cantidad}×</span>
+                                <span>{item.productos?.nombre ?? 'Producto eliminado'}</span>
+                              </div>
+                              {item.nota && (
+                                <p className="text-xs italic text-muted-foreground ml-8 mt-0.5">📝 {item.nota}</p>
+                              )}
                             </li>
                           ))}
                         </ul>
+                        {orden.notas && (
+                          <p className="text-xs italic text-muted-foreground mt-2 p-2 rounded bg-muted/50">📋 {orden.notas}</p>
+                        )}
                         {next && (
                           <Button
                             size="sm"
