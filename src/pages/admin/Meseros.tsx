@@ -548,7 +548,7 @@ export default function Meseros() {
                         <span className="text-sm text-muted-foreground">Activo</span>
                         <Switch 
                           checked={mesero.activo} 
-                          onCheckedChange={(checked) => toggleActivo.mutate({ id: mesero.id, activo: checked })}
+                          onCheckedChange={(checked) => toggleActivo.mutate({ id: mesero.id, activo: checked, user_id: mesero.user_id })}
                         />
                       </div>
                       <Button variant="ghost" size="icon" onClick={() => handleEdit(mesero)}>
