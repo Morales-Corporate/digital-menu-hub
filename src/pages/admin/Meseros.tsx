@@ -263,6 +263,16 @@ export default function Meseros() {
       toast.error('El nombre es requerido');
       return;
     }
+    if (!editingMesero && crearCuenta) {
+      if (!email.trim()) {
+        toast.error('El email es requerido');
+        return;
+      }
+      if (!password || password.length < 6) {
+        toast.error('La contraseña debe tener al menos 6 caracteres');
+        return;
+      }
+    }
     if (editingMesero) {
       updateMesero.mutate();
     } else {
