@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   LayoutGrid, 
   UtensilsCrossed, 
@@ -83,29 +84,31 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  target={item.external ? '_blank' : undefined}
-                  onClick={() => setSidebarOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
-                    isActive 
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground" 
-                      : "text-sidebar-foreground hover:bg-sidebar-accent"
-                  )}
-                >
-                  <item.icon className="h-5 w-5" />
-                  <span className="flex-1">{item.label}</span>
-                  {item.external && <ChevronRight className="h-4 w-4 opacity-50" />}
-                </Link>
-              );
-            })}
-          </nav>
+          <ScrollArea className="flex-1">
+            <nav className="p-4 space-y-1">
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    target={item.external ? '_blank' : undefined}
+                    onClick={() => setSidebarOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
+                      isActive 
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground" 
+                        : "text-sidebar-foreground hover:bg-sidebar-accent"
+                    )}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    <span className="flex-1">{item.label}</span>
+                    {item.external && <ChevronRight className="h-4 w-4 opacity-50" />}
+                  </Link>
+                );
+              })}
+            </nav>
+          </ScrollArea>
 
           {/* User section */}
           <div className="p-4 border-t border-sidebar-border">
