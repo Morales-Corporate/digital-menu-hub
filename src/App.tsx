@@ -52,6 +52,7 @@ const App = () => (
             <Route path="/mesa/:numero" element={<MenuMesa />} />
             <Route path="/checkout-invitado" element={<CheckoutInvitado />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             
             {/* Mesero route */}
             <Route path="/mesero" element={
