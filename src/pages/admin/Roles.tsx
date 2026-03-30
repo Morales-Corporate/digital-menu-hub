@@ -288,8 +288,8 @@ export default function Roles() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-display font-bold text-foreground">Roles y Permisos</h1>
-            <p className="text-muted-foreground mt-1">Crea usuarios y asigna roles del sistema</p>
+            <h1 className="text-3xl font-display font-bold text-foreground">Usuarios / Roles</h1>
+            <p className="text-muted-foreground mt-1">Gestiona usuarios y asigna roles del sistema</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
