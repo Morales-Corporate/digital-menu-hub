@@ -48,9 +48,6 @@ export default function Meseros() {
   const [editingMesero, setEditingMesero] = useState<Mesero | null>(null);
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [crearCuenta, setCrearCuenta] = useState(true);
   const [periodoStats, setPeriodoStats] = useState('0');
 
   // Asignación state
