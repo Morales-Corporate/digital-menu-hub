@@ -1,8 +1,13 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 type UserRole = 'admin' | 'user' | 'mesero' | 'cocina';
+
+const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
+const SESSION_CHECK_INTERVAL_MS = 60 * 1000; // check every minute
+const SESSION_LOGIN_TS_KEY = 'session_login_ts';
 
 interface AuthContextType {
   user: User | null;
@@ -24,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<UserRole | null>(null);
+  const expirationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchUserRole = async (userId: string) => {
     const { data } = await supabase
@@ -33,7 +39,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (data && data.length > 0) {
       const roles = data.map(r => r.role as UserRole);
-      // Prioritize: admin > mesero > cocina > user
       if (roles.includes('admin')) setRole('admin');
       else if (roles.includes('mesero')) setRole('mesero');
       else if (roles.includes('cocina')) setRole('cocina');
@@ -43,26 +48,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const forceLogout = useCallback(async () => {
+    localStorage.removeItem(SESSION_LOGIN_TS_KEY);
+    await supabase.auth.signOut({ scope: 'local' });
+    setSession(null);
+    setUser(null);
+    setRole(null);
+    toast.info('Tu sesión ha expirado. Por favor inicia sesión nuevamente.');
+    window.location.href = '/auth';
+  }, []);
+
+  const isSessionExpired = useCallback(() => {
+    const loginTs = localStorage.getItem(SESSION_LOGIN_TS_KEY);
+    if (!loginTs) return false;
+    return Date.now() - parseInt(loginTs, 10) > SESSION_MAX_AGE_MS;
+  }, []);
+
+  const startExpirationCheck = useCallback(() => {
+    if (expirationTimerRef.current) clearInterval(expirationTimerRef.current);
+    expirationTimerRef.current = setInterval(() => {
+      if (isSessionExpired()) {
+        forceLogout();
+      }
+    }, SESSION_CHECK_INTERVAL_MS);
+  }, [isSessionExpired, forceLogout]);
+
+  const stopExpirationCheck = useCallback(() => {
+    if (expirationTimerRef.current) {
+      clearInterval(expirationTimerRef.current);
+      expirationTimerRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Defer Supabase calls with setTimeout
+        if (event === 'SIGNED_IN') {
+          localStorage.setItem(SESSION_LOGIN_TS_KEY, Date.now().toString());
+          startExpirationCheck();
+        }
+
         if (session?.user) {
           setTimeout(() => {
             fetchUserRole(session.user.id);
           }, 0);
         } else {
           setRole(null);
+          stopExpirationCheck();
+          localStorage.removeItem(SESSION_LOGIN_TS_KEY);
         }
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -70,10 +111,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (session?.user) {
         fetchUserRole(session.user.id);
+        // If no login timestamp, set it now (existing session)
+        if (!localStorage.getItem(SESSION_LOGIN_TS_KEY)) {
+          localStorage.setItem(SESSION_LOGIN_TS_KEY, Date.now().toString());
+        }
+        // Check immediately if expired
+        if (isSessionExpired()) {
+          forceLogout();
+        } else {
+          startExpirationCheck();
+        }
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      stopExpirationCheck();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -96,10 +150,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    // Use local scope to guarantee logout even if the server session is already gone (multi-tab)
+    localStorage.removeItem(SESSION_LOGIN_TS_KEY);
+    stopExpirationCheck();
     await supabase.auth.signOut({ scope: 'local' });
-
-    // Always clear local state regardless of server response
     setSession(null);
     setUser(null);
     setRole(null);
