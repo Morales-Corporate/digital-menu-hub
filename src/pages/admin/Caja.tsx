@@ -90,6 +90,8 @@ export default function Caja() {
   const [loadingCierre, setLoadingCierre] = useState(false);
   const [ordersCierre, setOrdersCierre] = useState<OrderForCierre[]>([]);
   const [movimientosCierre, setMovimientosCierre] = useState<MovimientoCaja[]>([]);
+  const [ordenesPendientes, setOrdenesPendientes] = useState<{id: string; estado: string; numero_mesa: number | null; nombre_invitado: string | null; total: number}[]>([]);
+  const [cancelandoPendientes, setCancelandoPendientes] = useState(false);
 
   // Movimiento form
   const [movimientoTipo, setMovimientoTipo] = useState<'retiro' | 'ingreso'>('retiro');
@@ -159,7 +161,7 @@ export default function Caja() {
       const apertura = new Date(cajaAbierta.fecha_apertura).toISOString();
       const ahora = new Date().toISOString();
 
-      const [ordResult, movResult] = await Promise.all([
+      const [ordResult, movResult, pendResult] = await Promise.all([
         supabase
           .from('ordenes')
           .select('id, total, estado, metodo_pago')
@@ -171,13 +173,20 @@ export default function Caja() {
           .select('*')
           .gte('created_at', apertura)
           .lte('created_at', ahora),
+        supabase
+          .from('ordenes')
+          .select('id, estado, numero_mesa, nombre_invitado, total')
+          .gte('created_at', apertura)
+          .in('estado', ['pendiente', 'confirmado', 'en_preparacion', 'listo']),
       ]);
 
       if (ordResult.error) throw ordResult.error;
       if (movResult.error) throw movResult.error;
+      if (pendResult.error) throw pendResult.error;
 
       setOrdersCierre(ordResult.data || []);
       setMovimientosCierre(movResult.data || []);
+      setOrdenesPendientes(pendResult.data || []);
     } catch (error: any) {
       console.error('Error:', error);
       toast.error('Error al cargar resumen');
@@ -607,25 +616,90 @@ export default function Caja() {
 
         {/* ===== DIALOG: Cerrar Caja ===== */}
         <Dialog open={showCerrarDialog} onOpenChange={setShowCerrarDialog}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Lock className="h-5 w-5 text-red-600" />
+                <Lock className="h-5 w-5 text-destructive" />
                 Cerrar Caja
               </DialogTitle>
             </DialogHeader>
             {loadingCierre ? (
               <p className="text-center py-4 text-muted-foreground">Cargando resumen...</p>
+            ) : ordenesPendientes.length > 0 ? (
+              <div className="space-y-4">
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Hay {ordenesPendientes.length} pedido(s) sin finalizar</AlertTitle>
+                  <AlertDescription>
+                    No puedes cerrar la caja mientras haya pedidos pendientes, confirmados, en preparación o listos. Debes cancelarlos o entregarlos primero.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {ordenesPendientes.map(orden => {
+                    const estadoLabels: Record<string, string> = {
+                      pendiente: 'Pendiente',
+                      confirmado: 'Confirmado',
+                      en_preparacion: 'En preparación',
+                      listo: 'Listo',
+                    };
+                    return (
+                      <div key={orden.id} className="flex items-center justify-between p-3 bg-muted rounded-lg text-sm">
+                        <div>
+                          <span className="font-medium">
+                            {orden.numero_mesa ? `Mesa ${orden.numero_mesa}` : orden.nombre_invitado || 'Para llevar'}
+                          </span>
+                          <span className="ml-2 text-muted-foreground">S/ {orden.total.toFixed(2)}</span>
+                        </div>
+                        <Badge variant="outline">{estadoLabels[orden.estado] || orden.estado}</Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  disabled={cancelandoPendientes}
+                  onClick={async () => {
+                    setCancelandoPendientes(true);
+                    try {
+                      const ids = ordenesPendientes.map(o => o.id);
+                      for (const id of ids) {
+                        const { error } = await supabase
+                          .from('ordenes')
+                          .update({ estado: 'cancelado', motivo_cancelacion: 'Cancelado por cierre de caja' })
+                          .eq('id', id);
+                        if (error) throw error;
+                      }
+                      toast.success(`${ids.length} pedido(s) cancelados`);
+                      await fetchCierreData();
+                    } catch (error) {
+                      console.error(error);
+                      toast.error('Error al cancelar pedidos');
+                    } finally {
+                      setCancelandoPendientes(false);
+                    }
+                  }}
+                >
+                  {cancelandoPendientes ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                  )}
+                  Cancelar todos los pedidos pendientes
+                </Button>
+              </div>
             ) : (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="p-3 bg-green-50 rounded-lg">
+                  <div className="p-3 bg-muted rounded-lg">
                     <p className="text-muted-foreground">Pedidos entregados</p>
-                    <p className="text-xl font-bold text-green-600">{cierreEntregados.length}</p>
+                    <p className="text-xl font-bold text-primary">{cierreEntregados.length}</p>
                   </div>
-                  <div className="p-3 bg-red-50 rounded-lg">
+                  <div className="p-3 bg-muted rounded-lg">
                     <p className="text-muted-foreground">Pedidos cancelados</p>
-                    <p className="text-xl font-bold text-red-600">{cierreCancelados.length}</p>
+                    <p className="text-xl font-bold text-destructive">{cierreCancelados.length}</p>
                   </div>
                 </div>
 
@@ -661,7 +735,7 @@ export default function Caja() {
                     <span>+ Ingresos extra</span>
                     <span>S/ {cierreIngresos.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-red-600">
+                  <div className="flex justify-between text-destructive">
                     <span>- Retiros</span>
                     <span>S/ {cierreRetiros.toFixed(2)}</span>
                   </div>
@@ -685,7 +759,7 @@ export default function Caja() {
                   />
                   {efectivoReal && (
                     <p className={`text-sm font-medium ${
-                      parseFloat(efectivoReal) - cierreEfectivoEsperado >= 0 ? 'text-green-600' : 'text-red-600'
+                      parseFloat(efectivoReal) - cierreEfectivoEsperado >= 0 ? 'text-primary' : 'text-destructive'
                     }`}>
                       Diferencia: S/ {(parseFloat(efectivoReal) - cierreEfectivoEsperado).toFixed(2)}
                     </p>
@@ -695,14 +769,16 @@ export default function Caja() {
             )}
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowCerrarDialog(false)}>Cancelar</Button>
-              <Button
-                variant="destructive"
-                onClick={() => handleCerrarCaja('normal')}
-                disabled={loadingCierre || !efectivoReal}
-              >
-                <Lock className="h-4 w-4 mr-2" />
-                Confirmar Cierre
-              </Button>
+              {ordenesPendientes.length === 0 && (
+                <Button
+                  variant="destructive"
+                  onClick={() => handleCerrarCaja('normal')}
+                  disabled={loadingCierre || !efectivoReal}
+                >
+                  <Lock className="h-4 w-4 mr-2" />
+                  Confirmar Cierre
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
