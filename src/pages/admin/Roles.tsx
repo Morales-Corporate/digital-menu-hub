@@ -426,15 +426,17 @@ export default function Roles() {
                             <Badge variant="outline" className={rolColors[ur.role]}>
                               {rolLabels[ur.role]}
                             </Badge>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-destructive/60 hover:text-destructive"
-                              onClick={() => removeRole.mutate(ur.id)}
-                              title="Eliminar rol"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                            {ur.role !== 'user' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-destructive/60 hover:text-destructive"
+                                onClick={() => removeRole.mutate(ur.id)}
+                                title="Quitar rol"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
                         ))}
                         <div className="flex items-center gap-1 ml-2 border-l border-border pl-2">
