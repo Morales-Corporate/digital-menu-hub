@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Users, Clock, DollarSign, ClipboardList, TrendingUp, Pencil } from 'lucide-react';
+import { Users, Clock, DollarSign, ClipboardList, TrendingUp, Pencil } from 'lucide-react';
 import { format, subDays, differenceInMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
 
