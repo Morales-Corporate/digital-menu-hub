@@ -148,6 +148,17 @@ export default function Roles() {
 
   const createUser = useMutation({
     mutationFn: async () => {
+      // Validate email doesn't already exist
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', newEmail.trim().toLowerCase())
+        .maybeSingle();
+
+      if (existingProfile) {
+        throw new Error('Ya existe un usuario registrado con ese correo electrónico.');
+      }
+
       const res = await supabase.functions.invoke('manage-user', {
         body: {
           action: 'create',
