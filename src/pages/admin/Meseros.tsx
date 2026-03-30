@@ -209,9 +209,6 @@ export default function Meseros() {
   const resetForm = () => {
     setNombre('');
     setTelefono('');
-    setEmail('');
-    setPassword('');
-    setCrearCuenta(true);
     setEditingMesero(null);
     setDialogOpen(false);
   };
