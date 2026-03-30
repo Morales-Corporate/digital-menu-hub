@@ -532,7 +532,7 @@ function AlertasTab() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-orange-500" />
+            <AlertTriangle className="h-5 w-5 text-destructive" />
             Alertas recientes
             {unreadCount > 0 && <Badge variant="destructive">{unreadCount}</Badge>}
           </CardTitle>
@@ -545,9 +545,9 @@ function AlertasTab() {
           ) : (
             <div className="space-y-2">
               {alertas.map((a: any) => (
-                <div key={a.id} className={`flex items-center justify-between p-3 rounded-lg ${a.leida ? 'bg-muted/50' : 'bg-orange-50 border border-orange-200'}`}>
+                <div key={a.id} className={`flex items-center justify-between p-3 rounded-lg ${a.leida ? 'bg-muted/50' : 'bg-destructive/10 border border-destructive/30'}`}>
                   <div className="flex items-center gap-2">
-                    {!a.leida && <AlertTriangle className="h-4 w-4 text-orange-500" />}
+                    {!a.leida && <AlertTriangle className="h-4 w-4 text-destructive" />}
                     <div>
                       <p className={`text-sm ${a.leida ? 'text-muted-foreground' : 'font-medium'}`}>{a.mensaje}</p>
                       <p className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleString('es-PE')}</p>
