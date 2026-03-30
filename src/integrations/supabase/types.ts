@@ -551,6 +551,7 @@ export type Database = {
           cantidad: number
           created_at: string | null
           id: string
+          nota: string | null
           orden_id: string
           precio_unitario: number
           producto_id: string | null
@@ -559,6 +560,7 @@ export type Database = {
           cantidad?: number
           created_at?: string | null
           id?: string
+          nota?: string | null
           orden_id: string
           precio_unitario: number
           producto_id?: string | null
@@ -567,6 +569,7 @@ export type Database = {
           cantidad?: number
           created_at?: string | null
           id?: string
+          nota?: string | null
           orden_id?: string
           precio_unitario?: number
           producto_id?: string | null
@@ -601,6 +604,7 @@ export type Database = {
           monto_pago: number | null
           motivo_cancelacion: string | null
           nombre_invitado: string | null
+          notas: string | null
           numero_mesa: number | null
           puntos_ganados: number
           telefono_invitado: string | null
@@ -619,6 +623,7 @@ export type Database = {
           monto_pago?: number | null
           motivo_cancelacion?: string | null
           nombre_invitado?: string | null
+          notas?: string | null
           numero_mesa?: number | null
           puntos_ganados?: number
           telefono_invitado?: string | null
@@ -637,6 +642,7 @@ export type Database = {
           monto_pago?: number | null
           motivo_cancelacion?: string | null
           nombre_invitado?: string | null
+          notas?: string | null
           numero_mesa?: number | null
           puntos_ganados?: number
           telefono_invitado?: string | null
