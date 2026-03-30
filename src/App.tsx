@@ -10,6 +10,7 @@ import MenuPublico from "@/pages/MenuPublico";
 import MenuMesa from "@/pages/MenuMesa";
 import CheckoutInvitado from "@/pages/CheckoutInvitado";
 import Auth from "@/pages/Auth";
+import ResetPassword from "@/pages/ResetPassword";
 import MiCuenta from "@/pages/MiCuenta";
 import MisOrdenes from "@/pages/MisOrdenes";
 import Checkout from "@/pages/Checkout";
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="/mesa/:numero" element={<MenuMesa />} />
             <Route path="/checkout-invitado" element={<CheckoutInvitado />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             
             {/* Mesero route */}
             <Route path="/mesero" element={

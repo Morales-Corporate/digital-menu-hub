@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ShieldCheck, Plus, Trash2, UserCog, UserPlus, Loader2 } from 'lucide-react';
+import { Plus, Trash2, UserCog, UserPlus, ShieldCheck, Loader2, Pencil, KeyRound } from 'lucide-react';
 
 type AppRole = 'admin' | 'mesero' | 'cocina' | 'user';
 
@@ -39,17 +39,29 @@ const rolColors: Record<AppRole, string> = {
 export default function Roles() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogTab, setDialogTab] = useState<'assign' | 'create'>('assign');
-  
+  const [dialogTab, setDialogTab] = useState<'assign' | 'create'>('create');
+
   // Assign role state
   const [email, setEmail] = useState('');
   const [selectedRole, setSelectedRole] = useState<AppRole>('mesero');
-  
+
   // Create user state
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<AppRole>('mesero');
+
+  // Edit user state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editUserId, setEditUserId] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+
+  // Reset password state
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetUserId, setResetUserId] = useState('');
+  const [resetUserName, setResetUserName] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
 
   const { data: roles = [], isLoading } = useQuery({
     queryKey: ['user-roles-admin'],
@@ -87,7 +99,7 @@ export default function Roles() {
         .maybeSingle();
 
       if (profileError) throw profileError;
-      if (!profile) throw new Error('No se encontró un usuario con ese email. Asegúrate de que el usuario se haya registrado.');
+      if (!profile) throw new Error('No se encontró un usuario con ese email.');
 
       const { data: existing } = await supabase
         .from('user_roles')
@@ -103,21 +115,20 @@ export default function Roles() {
         .insert({ user_id: profile.id, role });
       if (error) throw error;
 
-      // If assigning mesero role, create mesero record if not exists
       if (role === 'mesero') {
         const { data: existingMesero } = await supabase
           .from('meseros')
           .select('id')
           .eq('user_id', profile.id)
           .maybeSingle();
-        
+
         if (!existingMesero) {
           const { data: profileData } = await supabase
             .from('profiles')
             .select('full_name')
             .eq('id', profile.id)
             .single();
-          
+
           await supabase.from('meseros').insert({
             nombre: profileData?.full_name || email,
             user_id: profile.id,
@@ -137,7 +148,6 @@ export default function Roles() {
 
   const createUser = useMutation({
     mutationFn: async () => {
-      // Create user via edge function
       const res = await supabase.functions.invoke('manage-user', {
         body: {
           action: 'create',
@@ -148,10 +158,9 @@ export default function Roles() {
       });
       if (res.error) throw new Error(res.error.message || 'Error al crear usuario');
       if (res.data?.error) throw new Error(res.data.error);
-      
+
       const userId = res.data.user_id;
 
-      // Assign role if not default user
       if (newRole !== 'user') {
         const { error } = await supabase
           .from('user_roles')
@@ -159,7 +168,6 @@ export default function Roles() {
         if (error) throw error;
       }
 
-      // If mesero, create mesero record
       if (newRole === 'mesero') {
         await supabase.from('meseros').insert({
           nombre: newName,
@@ -171,8 +179,49 @@ export default function Roles() {
       queryClient.invalidateQueries({ queryKey: ['user-roles-admin'] });
       queryClient.invalidateQueries({ queryKey: ['meseros'] });
       toast.success('Usuario creado y rol asignado correctamente');
-      resetCreateForm();
+      setNewName(''); setNewEmail(''); setNewPassword(''); setNewRole('mesero');
       setDialogOpen(false);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const editUser = useMutation({
+    mutationFn: async () => {
+      const res = await supabase.functions.invoke('manage-user', {
+        body: {
+          action: 'edit',
+          user_id: editUserId,
+          full_name: editName,
+          email: editEmail,
+        },
+      });
+      if (res.error) throw new Error(res.error.message || 'Error al editar');
+      if (res.data?.error) throw new Error(res.data.error);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-roles-admin'] });
+      toast.success('Usuario actualizado');
+      setEditDialogOpen(false);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const resetPassword = useMutation({
+    mutationFn: async () => {
+      const res = await supabase.functions.invoke('manage-user', {
+        body: {
+          action: 'reset_password',
+          user_id: resetUserId,
+          new_password: resetNewPassword,
+        },
+      });
+      if (res.error) throw new Error(res.error.message || 'Error al resetear');
+      if (res.data?.error) throw new Error(res.data.error);
+    },
+    onSuccess: () => {
+      toast.success('Contraseña restablecida exitosamente');
+      setResetDialogOpen(false);
+      setResetNewPassword('');
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -189,42 +238,37 @@ export default function Roles() {
     onError: () => toast.error('Error al eliminar rol'),
   });
 
-  const resetCreateForm = () => {
-    setNewName('');
-    setNewEmail('');
-    setNewPassword('');
-    setNewRole('mesero');
-  };
-
   const handleAssign = () => {
-    if (!email.trim()) {
-      toast.error('Ingresa un email');
-      return;
-    }
+    if (!email.trim()) { toast.error('Ingresa un email'); return; }
     assignRole.mutate({ email: email.trim(), role: selectedRole });
   };
 
   const handleCreate = () => {
-    if (!newName.trim()) {
-      toast.error('El nombre es requerido');
-      return;
-    }
-    if (!newEmail.trim()) {
-      toast.error('El email es requerido');
-      return;
-    }
+    if (!newName.trim()) { toast.error('El nombre es requerido'); return; }
+    if (!newEmail.trim()) { toast.error('El email es requerido'); return; }
     if (!newPassword || newPassword.length < 6) {
-      toast.error('La contraseña debe tener al menos 6 caracteres');
-      return;
+      toast.error('La contraseña debe tener al menos 6 caracteres'); return;
     }
     createUser.mutate();
   };
 
-  // Group roles by user
+  const openEdit = (userId: string, name: string | null, userEmail: string | null) => {
+    setEditUserId(userId);
+    setEditName(name || '');
+    setEditEmail(userEmail || '');
+    setEditDialogOpen(true);
+  };
+
+  const openResetPassword = (userId: string, name: string | null) => {
+    setResetUserId(userId);
+    setResetUserName(name || 'Usuario');
+    setResetNewPassword('');
+    setResetDialogOpen(true);
+  };
+
   const groupedByUser = roles.reduce<Record<string, UserRoleRow[]>>((acc, r) => {
-    const key = r.user_id;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(r);
+    if (!acc[r.user_id]) acc[r.user_id] = [];
+    acc[r.user_id].push(r);
     return acc;
   }, {});
 
@@ -236,10 +280,7 @@ export default function Roles() {
             <h1 className="text-3xl font-display font-bold text-foreground">Roles y Permisos</h1>
             <p className="text-muted-foreground mt-1">Crea usuarios y asigna roles del sistema</p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) resetCreateForm();
-          }}>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="h-4 w-4" />
@@ -265,36 +306,20 @@ export default function Roles() {
                 <TabsContent value="create" className="space-y-4 pt-4">
                   <div className="space-y-2">
                     <Label>Nombre completo *</Label>
-                    <Input
-                      value={newName}
-                      onChange={e => setNewName(e.target.value)}
-                      placeholder="Juan Pérez"
-                    />
+                    <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Juan Pérez" />
                   </div>
                   <div className="space-y-2">
                     <Label>Email *</Label>
-                    <Input
-                      type="email"
-                      value={newEmail}
-                      onChange={e => setNewEmail(e.target.value)}
-                      placeholder="usuario@ejemplo.com"
-                    />
+                    <Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="usuario@ejemplo.com" />
                   </div>
                   <div className="space-y-2">
                     <Label>Contraseña *</Label>
-                    <Input
-                      type="password"
-                      value={newPassword}
-                      onChange={e => setNewPassword(e.target.value)}
-                      placeholder="Mínimo 6 caracteres"
-                    />
+                    <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
                   </div>
                   <div className="space-y-2">
                     <Label>Rol</Label>
                     <Select value={newRole} onValueChange={v => setNewRole(v as AppRole)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="admin">Administrador — Acceso total</SelectItem>
                         <SelectItem value="mesero">Mesero — Gestión de pedidos</SelectItem>
@@ -304,33 +329,20 @@ export default function Roles() {
                     </Select>
                   </div>
                   <Button onClick={handleCreate} className="w-full" disabled={createUser.isPending}>
-                    {createUser.isPending ? (
-                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creando...</>
-                    ) : (
-                      'Crear Usuario'
-                    )}
+                    {createUser.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creando...</> : 'Crear Usuario'}
                   </Button>
                 </TabsContent>
 
                 <TabsContent value="assign" className="space-y-4 pt-4">
                   <div className="space-y-2">
                     <Label>Email del usuario existente</Label>
-                    <Input
-                      type="email"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      placeholder="usuario@ejemplo.com"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      El usuario debe haberse registrado previamente.
-                    </p>
+                    <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@ejemplo.com" />
+                    <p className="text-xs text-muted-foreground">El usuario debe haberse registrado previamente.</p>
                   </div>
                   <div className="space-y-2">
                     <Label>Rol</Label>
                     <Select value={selectedRole} onValueChange={v => setSelectedRole(v as AppRole)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="admin">Administrador — Acceso total</SelectItem>
                         <SelectItem value="mesero">Mesero — Gestión de pedidos</SelectItem>
@@ -340,11 +352,7 @@ export default function Roles() {
                     </Select>
                   </div>
                   <Button onClick={handleAssign} className="w-full" disabled={assignRole.isPending}>
-                    {assignRole.isPending ? (
-                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Asignando...</>
-                    ) : (
-                      'Asignar Rol'
-                    )}
+                    {assignRole.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Asignando...</> : 'Asignar Rol'}
                   </Button>
                 </TabsContent>
               </Tabs>
@@ -412,11 +420,32 @@ export default function Roles() {
                               size="icon"
                               className="h-6 w-6 text-destructive/60 hover:text-destructive"
                               onClick={() => removeRole.mutate(ur.id)}
+                              title="Eliminar rol"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         ))}
+                        <div className="flex items-center gap-1 ml-2 border-l border-border pl-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => openEdit(userId, profile?.full_name ?? null, profile?.email ?? null)}
+                            title="Editar usuario"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => openResetPassword(userId, profile?.full_name ?? null)}
+                            title="Restablecer contraseña"
+                          >
+                            <KeyRound className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -425,6 +454,64 @@ export default function Roles() {
             )}
           </CardContent>
         </Card>
+
+        {/* Edit User Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Usuario</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Nombre completo</Label>
+                <Input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Nombre" />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="Email" />
+              </div>
+              <Button onClick={() => editUser.mutate()} className="w-full" disabled={editUser.isPending}>
+                {editUser.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando...</> : 'Guardar Cambios'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reset Password Dialog */}
+        <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Restablecer Contraseña</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-muted-foreground">
+                Establece una nueva contraseña para <span className="font-medium text-foreground">{resetUserName}</span>.
+              </p>
+              <div className="space-y-2">
+                <Label>Nueva contraseña</Label>
+                <Input
+                  type="password"
+                  value={resetNewPassword}
+                  onChange={e => setResetNewPassword(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                />
+              </div>
+              <Button
+                onClick={() => {
+                  if (!resetNewPassword || resetNewPassword.length < 6) {
+                    toast.error('La contraseña debe tener al menos 6 caracteres');
+                    return;
+                  }
+                  resetPassword.mutate();
+                }}
+                className="w-full"
+                disabled={resetPassword.isPending}
+              >
+                {resetPassword.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Restableciendo...</> : 'Restablecer Contraseña'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );

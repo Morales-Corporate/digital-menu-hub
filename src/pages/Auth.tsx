@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +31,8 @@ type SignUpFormData = z.infer<typeof signUpSchema>;
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
   const { user, role, signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
@@ -108,7 +111,53 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLogin ? (
+          {showForgotPassword ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Ingresa tu email y te enviaremos un enlace para restablecer tu contraseña.
+              </p>
+              <Input
+                type="email"
+                value={forgotEmail}
+                onChange={e => setForgotEmail(e.target.value)}
+                placeholder="tu@email.com"
+              />
+              <Button
+                className="w-full"
+                disabled={isSubmitting}
+                onClick={async () => {
+                  if (!forgotEmail.trim()) {
+                    toast.error('Ingresa tu email');
+                    return;
+                  }
+                  setIsSubmitting(true);
+                  const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+                    redirectTo: `${window.location.origin}/reset-password`,
+                  });
+                  setIsSubmitting(false);
+                  if (error) {
+                    toast.error(error.message);
+                  } else {
+                    toast.success('Se envió un enlace de recuperación a tu email');
+                    setShowForgotPassword(false);
+                  }
+                }}
+              >
+                {isSubmitting ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando...</>
+                ) : (
+                  'Enviar enlace de recuperación'
+                )}
+              </Button>
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(false)}
+                className="text-sm text-muted-foreground hover:text-primary transition-colors w-full text-center"
+              >
+                Volver al login
+              </button>
+            </div>
+          ) : isLogin ? (
             <Form key="login" {...loginForm}>
               <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
                 <FormField
@@ -137,6 +186,15 @@ export default function Auth() {
                     </FormItem>
                   )}
                 />
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
