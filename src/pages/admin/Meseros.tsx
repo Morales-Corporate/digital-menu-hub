@@ -358,7 +358,7 @@ export default function Meseros() {
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="nombre">Nombre *</Label>
+                    <Label htmlFor="nombre">Nombre completo *</Label>
                     <Input 
                       id="nombre" 
                       value={nombre} 
@@ -375,8 +375,43 @@ export default function Meseros() {
                       placeholder="Número de teléfono"
                     />
                   </div>
-                  <Button onClick={handleSubmit} className="w-full">
-                    {editingMesero ? 'Guardar Cambios' : 'Agregar Mesero'}
+                  {!editingMesero && (
+                    <>
+                      <div className="flex items-center justify-between rounded-md border border-border p-3">
+                        <div>
+                          <p className="text-sm font-medium">Crear cuenta de acceso</p>
+                          <p className="text-xs text-muted-foreground">Permite al mesero iniciar sesión en el sistema</p>
+                        </div>
+                        <Switch checked={crearCuenta} onCheckedChange={setCrearCuenta} />
+                      </div>
+                      {crearCuenta && (
+                        <>
+                          <div className="space-y-2">
+                            <Label htmlFor="email">Email *</Label>
+                            <Input 
+                              id="email" 
+                              type="email"
+                              value={email} 
+                              onChange={e => setEmail(e.target.value)} 
+                              placeholder="mesero@ejemplo.com"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="password">Contraseña *</Label>
+                            <Input 
+                              id="password" 
+                              type="password"
+                              value={password} 
+                              onChange={e => setPassword(e.target.value)} 
+                              placeholder="Mínimo 6 caracteres"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+                  <Button onClick={handleSubmit} className="w-full" disabled={createMesero.isPending || updateMesero.isPending}>
+                    {createMesero.isPending ? 'Creando...' : editingMesero ? 'Guardar Cambios' : 'Agregar Mesero'}
                   </Button>
                 </div>
               </DialogContent>
