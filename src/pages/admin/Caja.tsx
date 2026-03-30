@@ -90,6 +90,8 @@ export default function Caja() {
   const [loadingCierre, setLoadingCierre] = useState(false);
   const [ordersCierre, setOrdersCierre] = useState<OrderForCierre[]>([]);
   const [movimientosCierre, setMovimientosCierre] = useState<MovimientoCaja[]>([]);
+  const [ordenesPendientes, setOrdenesPendientes] = useState<{id: string; estado: string; numero_mesa: number | null; nombre_invitado: string | null; total: number}[]>([]);
+  const [cancelandoPendientes, setCancelandoPendientes] = useState(false);
 
   // Movimiento form
   const [movimientoTipo, setMovimientoTipo] = useState<'retiro' | 'ingreso'>('retiro');
