@@ -148,6 +148,17 @@ export default function Roles() {
 
   const createUser = useMutation({
     mutationFn: async () => {
+      // Validate email doesn't already exist
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', newEmail.trim().toLowerCase())
+        .maybeSingle();
+
+      if (existingProfile) {
+        throw new Error('Ya existe un usuario registrado con ese correo electrónico.');
+      }
+
       const res = await supabase.functions.invoke('manage-user', {
         body: {
           action: 'create',
@@ -277,8 +288,8 @@ export default function Roles() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-display font-bold text-foreground">Roles y Permisos</h1>
-            <p className="text-muted-foreground mt-1">Crea usuarios y asigna roles del sistema</p>
+            <h1 className="text-3xl font-display font-bold text-foreground">Usuarios / Roles</h1>
+            <p className="text-muted-foreground mt-1">Gestiona usuarios y asigna roles del sistema</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -415,15 +426,17 @@ export default function Roles() {
                             <Badge variant="outline" className={rolColors[ur.role]}>
                               {rolLabels[ur.role]}
                             </Badge>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-destructive/60 hover:text-destructive"
-                              onClick={() => removeRole.mutate(ur.id)}
-                              title="Eliminar rol"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                            {ur.role !== 'user' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-destructive/60 hover:text-destructive"
+                                onClick={() => removeRole.mutate(ur.id)}
+                                title="Quitar rol"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
                         ))}
                         <div className="flex items-center gap-1 ml-2 border-l border-border pl-2">

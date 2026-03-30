@@ -41,7 +41,7 @@ const navItems = [
   { href: '/admin/insumos', label: 'Insumos', icon: Package },
   { href: '/admin/reportes', label: 'Reportes', icon: TrendingUp },
   { href: '/admin/recompensas', label: 'Recompensas', icon: Gift },
-  { href: '/admin/roles', label: 'Roles', icon: ShieldCheck },
+  { href: '/admin/roles', label: 'Usuarios / Roles', icon: ShieldCheck },
   { href: '/admin/configuracion', label: 'Configuración', icon: Settings },
   { href: '/', label: 'Ver Menú', icon: Eye, external: true },
   { href: '/mesero', label: 'Modo Mesero', icon: Users, external: true },
