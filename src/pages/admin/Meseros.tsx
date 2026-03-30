@@ -199,15 +199,23 @@ export default function Meseros() {
   });
 
   const toggleActivo = useMutation({
-    mutationFn: async ({ id, activo }: { id: string; activo: boolean }) => {
+    mutationFn: async ({ id, activo, user_id }: { id: string; activo: boolean; user_id?: string | null }) => {
       const { error } = await supabase
         .from('meseros')
         .update({ activo })
         .eq('id', id);
       if (error) throw error;
+
+      // Enable/disable auth account if linked
+      if (user_id) {
+        await supabase.functions.invoke('manage-user', {
+          body: { action: activo ? 'enable' : 'disable', user_id },
+        });
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['meseros'] });
+      toast.success(variables.activo ? 'Mesero activado' : 'Mesero dado de baja');
     }
   });
 
