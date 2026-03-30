@@ -450,6 +450,34 @@ function ComprasTab() {
   );
 }
 
+// ========== EMAIL FIELD COMPONENT ==========
+function EmailDestinoField({ config, onSave }: { config: any; onSave: (email: string) => void }) {
+  const [email, setEmail] = useState(config?.email_destino || '');
+  const [saved, setSaved] = useState(true);
+
+  const handleSave = () => {
+    onSave(email);
+    setSaved(true);
+  };
+
+  return (
+    <div className="max-w-sm space-y-2">
+      <Label>Email destino</Label>
+      <div className="flex gap-2">
+        <Input
+          value={email}
+          onChange={e => { setEmail(e.target.value); setSaved(false); }}
+          placeholder="admin@restaurante.com"
+          type="email"
+        />
+        <Button size="sm" onClick={handleSave} disabled={saved || !email}>
+          Guardar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ========== ALERTAS TAB ==========
 function AlertasTab() {
   const queryClient = useQueryClient();
@@ -520,10 +548,7 @@ function AlertasTab() {
             <Switch checked={config?.notificar_email ?? false} onCheckedChange={v => updateConfigMutation.mutate({ notificar_email: v })} />
           </div>
           {config?.notificar_email && (
-            <div className="max-w-sm">
-              <Label>Email destino</Label>
-              <Input value={config?.email_destino || ''} onChange={e => updateConfigMutation.mutate({ email_destino: e.target.value })} placeholder="admin@restaurante.com" />
-            </div>
+            <EmailDestinoField config={config} onSave={(email) => updateConfigMutation.mutate({ email_destino: email })} />
           )}
         </CardContent>
       </Card>
