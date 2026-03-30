@@ -20,7 +20,8 @@ import {
   Users,
   Settings,
   ShieldCheck,
-  Package
+  Package,
+  TrendingUp
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -38,6 +39,7 @@ const navItems = [
   { href: '/admin/menus', label: 'Menús/Combos', icon: UtensilsCrossed },
   { href: '/admin/productos', label: 'Productos', icon: UtensilsCrossed },
   { href: '/admin/insumos', label: 'Insumos', icon: Package },
+  { href: '/admin/reportes', label: 'Reportes', icon: TrendingUp },
   { href: '/admin/recompensas', label: 'Recompensas', icon: Gift },
   { href: '/admin/roles', label: 'Roles', icon: ShieldCheck },
   { href: '/admin/configuracion', label: 'Configuración', icon: Settings },

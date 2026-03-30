@@ -417,6 +417,39 @@ export type Database = {
         }
         Relationships: []
       }
+      costos_operativos: {
+        Row: {
+          activo: boolean
+          categoria: string
+          created_at: string | null
+          id: string
+          monto: number
+          nombre: string
+          periodo: string
+          updated_at: string | null
+        }
+        Insert: {
+          activo?: boolean
+          categoria?: string
+          created_at?: string | null
+          id?: string
+          monto?: number
+          nombre: string
+          periodo?: string
+          updated_at?: string | null
+        }
+        Update: {
+          activo?: boolean
+          categoria?: string
+          created_at?: string | null
+          id?: string
+          monto?: number
+          nombre?: string
+          periodo?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       descuentos_activos: {
         Row: {
           created_at: string | null
