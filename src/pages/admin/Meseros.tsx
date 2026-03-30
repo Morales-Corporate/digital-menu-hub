@@ -150,17 +150,35 @@ export default function Meseros() {
 
   const createMesero = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from('meseros')
-        .insert({ nombre, telefono: telefono || null });
-      if (error) throw error;
+      if (crearCuenta && email && password) {
+        // Create user account via edge function
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await supabase.functions.invoke('manage-user', {
+          body: {
+            action: 'create',
+            email: email.trim().toLowerCase(),
+            password,
+            full_name: nombre,
+            role: 'mesero',
+            telefono: telefono || null,
+          },
+        });
+        if (res.error) throw new Error(res.error.message || 'Error al crear usuario');
+        if (res.data?.error) throw new Error(res.data.error);
+      } else {
+        // Just create mesero record without account
+        const { error } = await supabase
+          .from('meseros')
+          .insert({ nombre, telefono: telefono || null });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meseros'] });
-      toast.success('Mesero agregado');
+      toast.success(crearCuenta ? 'Mesero y cuenta creados exitosamente' : 'Mesero agregado');
       resetForm();
     },
-    onError: () => toast.error('Error al agregar mesero')
+    onError: (err: Error) => toast.error(err.message || 'Error al agregar mesero')
   });
 
   const updateMesero = useMutation({
