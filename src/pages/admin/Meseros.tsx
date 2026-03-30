@@ -19,6 +19,7 @@ interface Mesero {
   id: string;
   nombre: string;
   telefono: string | null;
+  user_id: string | null;
   activo: boolean;
   created_at: string;
 }
