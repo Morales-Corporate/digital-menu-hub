@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Users, Clock, DollarSign, ClipboardList, TrendingUp, Pencil } from 'lucide-react';
+import { Users, Clock, DollarSign, ClipboardList, TrendingUp, Pencil } from 'lucide-react';
 import { format, subDays, differenceInMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -48,9 +48,6 @@ export default function Meseros() {
   const [editingMesero, setEditingMesero] = useState<Mesero | null>(null);
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [crearCuenta, setCrearCuenta] = useState(true);
   const [periodoStats, setPeriodoStats] = useState('0');
 
   // Asignación state
@@ -149,39 +146,6 @@ export default function Meseros() {
     enabled: meseros.length > 0
   });
 
-  const createMesero = useMutation({
-    mutationFn: async () => {
-      if (crearCuenta && email && password) {
-        // Create user account via edge function
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await supabase.functions.invoke('manage-user', {
-          body: {
-            action: 'create',
-            email: email.trim().toLowerCase(),
-            password,
-            full_name: nombre,
-            role: 'mesero',
-            telefono: telefono || null,
-          },
-        });
-        if (res.error) throw new Error(res.error.message || 'Error al crear usuario');
-        if (res.data?.error) throw new Error(res.data.error);
-      } else {
-        // Just create mesero record without account
-        const { error } = await supabase
-          .from('meseros')
-          .insert({ nombre, telefono: telefono || null });
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['meseros'] });
-      toast.success(crearCuenta ? 'Mesero y cuenta creados exitosamente' : 'Mesero agregado');
-      resetForm();
-    },
-    onError: (err: Error) => toast.error(err.message || 'Error al agregar mesero')
-  });
-
   const updateMesero = useMutation({
     mutationFn: async () => {
       if (!editingMesero) return;
@@ -245,9 +209,6 @@ export default function Meseros() {
   const resetForm = () => {
     setNombre('');
     setTelefono('');
-    setEmail('');
-    setPassword('');
-    setCrearCuenta(true);
     setEditingMesero(null);
     setDialogOpen(false);
   };
@@ -264,21 +225,7 @@ export default function Meseros() {
       toast.error('El nombre es requerido');
       return;
     }
-    if (!editingMesero && crearCuenta) {
-      if (!email.trim()) {
-        toast.error('El email es requerido');
-        return;
-      }
-      if (!password || password.length < 6) {
-        toast.error('La contraseña debe tener al menos 6 caracteres');
-        return;
-      }
-    }
-    if (editingMesero) {
-      updateMesero.mutate();
-    } else {
-      createMesero.mutate();
-    }
+    updateMesero.mutate();
   };
 
   const meserosActivos = meseros.filter(m => m.activo);
@@ -357,19 +304,13 @@ export default function Meseros() {
             </Dialog>
 
             <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) resetForm(); else setDialogOpen(true); }}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Nuevo Mesero
-                </Button>
-              </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{editingMesero ? 'Editar Mesero' : 'Nuevo Mesero'}</DialogTitle>
+                  <DialogTitle>Editar Mesero</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="nombre">Nombre completo *</Label>
+                    <Label htmlFor="nombre">Nombre *</Label>
                     <Input 
                       id="nombre" 
                       value={nombre} 
@@ -386,43 +327,8 @@ export default function Meseros() {
                       placeholder="Número de teléfono"
                     />
                   </div>
-                  {!editingMesero && (
-                    <>
-                      <div className="flex items-center justify-between rounded-md border border-border p-3">
-                        <div>
-                          <p className="text-sm font-medium">Crear cuenta de acceso</p>
-                          <p className="text-xs text-muted-foreground">Permite al mesero iniciar sesión en el sistema</p>
-                        </div>
-                        <Switch checked={crearCuenta} onCheckedChange={setCrearCuenta} />
-                      </div>
-                      {crearCuenta && (
-                        <>
-                          <div className="space-y-2">
-                            <Label htmlFor="email">Email *</Label>
-                            <Input 
-                              id="email" 
-                              type="email"
-                              value={email} 
-                              onChange={e => setEmail(e.target.value)} 
-                              placeholder="mesero@ejemplo.com"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="password">Contraseña *</Label>
-                            <Input 
-                              id="password" 
-                              type="password"
-                              value={password} 
-                              onChange={e => setPassword(e.target.value)} 
-                              placeholder="Mínimo 6 caracteres"
-                            />
-                          </div>
-                        </>
-                      )}
-                    </>
-                  )}
-                  <Button onClick={handleSubmit} className="w-full" disabled={createMesero.isPending || updateMesero.isPending}>
-                    {createMesero.isPending ? 'Creando...' : editingMesero ? 'Guardar Cambios' : 'Agregar Mesero'}
+                  <Button onClick={handleSubmit} className="w-full" disabled={updateMesero.isPending}>
+                    {updateMesero.isPending ? 'Guardando...' : 'Guardar Cambios'}
                   </Button>
                 </div>
               </DialogContent>

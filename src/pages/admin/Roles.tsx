@@ -8,9 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ShieldCheck, Plus, Trash2, UserCog } from 'lucide-react';
+import { ShieldCheck, Plus, Trash2, UserCog, UserPlus, Loader2 } from 'lucide-react';
 
 type AppRole = 'admin' | 'mesero' | 'cocina' | 'user';
 
@@ -38,8 +39,17 @@ const rolColors: Record<AppRole, string> = {
 export default function Roles() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogTab, setDialogTab] = useState<'assign' | 'create'>('assign');
+  
+  // Assign role state
   const [email, setEmail] = useState('');
   const [selectedRole, setSelectedRole] = useState<AppRole>('mesero');
+  
+  // Create user state
+  const [newName, setNewName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newRole, setNewRole] = useState<AppRole>('mesero');
 
   const { data: roles = [], isLoading } = useQuery({
     queryKey: ['user-roles-admin'],
@@ -70,7 +80,6 @@ export default function Roles() {
 
   const assignRole = useMutation({
     mutationFn: async ({ email, role }: { email: string; role: AppRole }) => {
-      // Find user by email in profiles
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id')
@@ -80,7 +89,6 @@ export default function Roles() {
       if (profileError) throw profileError;
       if (!profile) throw new Error('No se encontró un usuario con ese email. Asegúrate de que el usuario se haya registrado.');
 
-      // Check if role already exists
       const { data: existing } = await supabase
         .from('user_roles')
         .select('id')
@@ -94,11 +102,76 @@ export default function Roles() {
         .from('user_roles')
         .insert({ user_id: profile.id, role });
       if (error) throw error;
+
+      // If assigning mesero role, create mesero record if not exists
+      if (role === 'mesero') {
+        const { data: existingMesero } = await supabase
+          .from('meseros')
+          .select('id')
+          .eq('user_id', profile.id)
+          .maybeSingle();
+        
+        if (!existingMesero) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', profile.id)
+            .single();
+          
+          await supabase.from('meseros').insert({
+            nombre: profileData?.full_name || email,
+            user_id: profile.id,
+          });
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-roles-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['meseros'] });
       toast.success('Rol asignado correctamente');
       setEmail('');
+      setDialogOpen(false);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const createUser = useMutation({
+    mutationFn: async () => {
+      // Create user via edge function
+      const res = await supabase.functions.invoke('manage-user', {
+        body: {
+          action: 'create',
+          email: newEmail.trim().toLowerCase(),
+          password: newPassword,
+          full_name: newName,
+        },
+      });
+      if (res.error) throw new Error(res.error.message || 'Error al crear usuario');
+      if (res.data?.error) throw new Error(res.data.error);
+      
+      const userId = res.data.user_id;
+
+      // Assign role if not default user
+      if (newRole !== 'user') {
+        const { error } = await supabase
+          .from('user_roles')
+          .insert({ user_id: userId, role: newRole });
+        if (error) throw error;
+      }
+
+      // If mesero, create mesero record
+      if (newRole === 'mesero') {
+        await supabase.from('meseros').insert({
+          nombre: newName,
+          user_id: userId,
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-roles-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['meseros'] });
+      toast.success('Usuario creado y rol asignado correctamente');
+      resetCreateForm();
       setDialogOpen(false);
     },
     onError: (err: Error) => toast.error(err.message),
@@ -116,12 +189,35 @@ export default function Roles() {
     onError: () => toast.error('Error al eliminar rol'),
   });
 
+  const resetCreateForm = () => {
+    setNewName('');
+    setNewEmail('');
+    setNewPassword('');
+    setNewRole('mesero');
+  };
+
   const handleAssign = () => {
     if (!email.trim()) {
       toast.error('Ingresa un email');
       return;
     }
     assignRole.mutate({ email: email.trim(), role: selectedRole });
+  };
+
+  const handleCreate = () => {
+    if (!newName.trim()) {
+      toast.error('El nombre es requerido');
+      return;
+    }
+    if (!newEmail.trim()) {
+      toast.error('El email es requerido');
+      return;
+    }
+    if (!newPassword || newPassword.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    createUser.mutate();
   };
 
   // Group roles by user
@@ -138,55 +234,120 @@ export default function Roles() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-display font-bold text-foreground">Roles y Permisos</h1>
-            <p className="text-muted-foreground mt-1">Asigna roles a los usuarios del sistema</p>
+            <p className="text-muted-foreground mt-1">Crea usuarios y asigna roles del sistema</p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) resetCreateForm();
+          }}>
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="h-4 w-4" />
-                Asignar Rol
+                Nuevo Usuario / Rol
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Asignar Rol a Usuario</DialogTitle>
+                <DialogTitle>Gestión de Usuarios</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email del usuario</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="usuario@ejemplo.com"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    El usuario debe haberse registrado previamente.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Rol</Label>
-                  <Select value={selectedRole} onValueChange={v => setSelectedRole(v as AppRole)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Administrador — Acceso total</SelectItem>
-                      <SelectItem value="mesero">Mesero — Gestión de pedidos</SelectItem>
-                      <SelectItem value="cocina">Cocina — Pantalla de cocina</SelectItem>
-                      <SelectItem value="user">Usuario — Cliente estándar</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  onClick={handleAssign}
-                  className="w-full"
-                  disabled={assignRole.isPending}
-                >
-                  {assignRole.isPending ? 'Asignando...' : 'Asignar Rol'}
-                </Button>
-              </div>
+              <Tabs value={dialogTab} onValueChange={v => setDialogTab(v as 'assign' | 'create')} className="mt-2">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="create" className="gap-1.5">
+                    <UserPlus className="h-3.5 w-3.5" />
+                    Crear Usuario
+                  </TabsTrigger>
+                  <TabsTrigger value="assign" className="gap-1.5">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Asignar Rol
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="create" className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label>Nombre completo *</Label>
+                    <Input
+                      value={newName}
+                      onChange={e => setNewName(e.target.value)}
+                      placeholder="Juan Pérez"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Email *</Label>
+                    <Input
+                      type="email"
+                      value={newEmail}
+                      onChange={e => setNewEmail(e.target.value)}
+                      placeholder="usuario@ejemplo.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Contraseña *</Label>
+                    <Input
+                      type="password"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      placeholder="Mínimo 6 caracteres"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Rol</Label>
+                    <Select value={newRole} onValueChange={v => setNewRole(v as AppRole)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Administrador — Acceso total</SelectItem>
+                        <SelectItem value="mesero">Mesero — Gestión de pedidos</SelectItem>
+                        <SelectItem value="cocina">Cocina — Pantalla de cocina</SelectItem>
+                        <SelectItem value="user">Usuario — Cliente estándar</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={handleCreate} className="w-full" disabled={createUser.isPending}>
+                    {createUser.isPending ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creando...</>
+                    ) : (
+                      'Crear Usuario'
+                    )}
+                  </Button>
+                </TabsContent>
+
+                <TabsContent value="assign" className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label>Email del usuario existente</Label>
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="usuario@ejemplo.com"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      El usuario debe haberse registrado previamente.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Rol</Label>
+                    <Select value={selectedRole} onValueChange={v => setSelectedRole(v as AppRole)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Administrador — Acceso total</SelectItem>
+                        <SelectItem value="mesero">Mesero — Gestión de pedidos</SelectItem>
+                        <SelectItem value="cocina">Cocina — Pantalla de cocina</SelectItem>
+                        <SelectItem value="user">Usuario — Cliente estándar</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={handleAssign} className="w-full" disabled={assignRole.isPending}>
+                    {assignRole.isPending ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Asignando...</>
+                    ) : (
+                      'Asignar Rol'
+                    )}
+                  </Button>
+                </TabsContent>
+              </Tabs>
             </DialogContent>
           </Dialog>
         </div>
@@ -219,7 +380,7 @@ export default function Roles() {
               <p className="text-muted-foreground text-center py-8">Cargando...</p>
             ) : Object.keys(groupedByUser).length === 0 ? (
               <p className="text-muted-foreground text-center py-8">
-                No hay roles asignados. Usa el botón "Asignar Rol" para comenzar.
+                No hay roles asignados. Usa el botón "Nuevo Usuario / Rol" para comenzar.
               </p>
             ) : (
               <div className="divide-y">
