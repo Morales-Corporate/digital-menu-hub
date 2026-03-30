@@ -31,6 +31,7 @@ import Estadisticas from "@/pages/admin/Estadisticas";
 import Configuracion from "@/pages/admin/Configuracion";
 import Roles from "@/pages/admin/Roles";
 import Insumos from "@/pages/admin/Insumos";
+import Reportes from "@/pages/admin/Reportes";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -161,6 +162,11 @@ const App = () => (
             <Route path="/admin/insumos" element={
               <ProtectedRoute requireAdmin>
                 <Insumos />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/reportes" element={
+              <ProtectedRoute requireAdmin>
+                <Reportes />
               </ProtectedRoute>
             } />
             
