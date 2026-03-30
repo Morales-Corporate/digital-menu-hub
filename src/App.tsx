@@ -157,6 +157,11 @@ const App = () => (
                 <Roles />
               </ProtectedRoute>
             } />
+            <Route path="/admin/insumos" element={
+              <ProtectedRoute requireAdmin>
+                <Insumos />
+              </ProtectedRoute>
+            } />
             
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
