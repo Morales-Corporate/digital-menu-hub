@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/AdminLayout';
@@ -11,22 +11,58 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Loader2, Package, AlertTriangle, ShoppingCart, BookOpen, Bell, BellOff, Check } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Package, AlertTriangle, ShoppingCart, BookOpen, Bell, Check } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 
-const UNIDADES = [
-  { value: 'unidad', label: 'Unidad(es)' },
-  { value: 'gr', label: 'Gramos (gr)' },
-  { value: 'kg', label: 'Kilogramos (kg)' },
+// ========== UNIT SYSTEM ==========
+const UNIDADES_BASE = [
+  { value: 'g', label: 'Gramos (g)' },
   { value: 'ml', label: 'Mililitros (ml)' },
-  { value: 'lt', label: 'Litros (lt)' },
+  { value: 'unidad', label: 'Unidad(es)' },
 ];
+
+const UNIDADES_COMPRA: Record<string, { value: string; label: string; factor: number }[]> = {
+  g: [
+    { value: 'g', label: 'Gramos (g)', factor: 1 },
+    { value: 'kg', label: 'Kilogramos (kg)', factor: 1000 },
+  ],
+  ml: [
+    { value: 'ml', label: 'Mililitros (ml)', factor: 1 },
+    { value: 'lt', label: 'Litros (lt)', factor: 1000 },
+  ],
+  unidad: [
+    { value: 'unidad', label: 'Unidad(es)', factor: 1 },
+  ],
+};
+
+// Also allow recipe quantities in convertible units
+const UNIDADES_RECETA = UNIDADES_COMPRA;
+
+function getUnitLabel(base: string): string {
+  return UNIDADES_BASE.find(u => u.value === base)?.label || base;
+}
+
+function getUnitAbbr(base: string): string {
+  return base;
+}
+
+function convertToBase(cantidad: number, unidadCompra: string, unidadBase: string): number {
+  const opciones = UNIDADES_COMPRA[unidadBase] || [];
+  const opcion = opciones.find(o => o.value === unidadCompra);
+  return cantidad * (opcion?.factor || 1);
+}
+
+function formatStock(value: number, unit: string): string {
+  if (unit === 'g' && value >= 1000) return `${(value / 1000).toFixed(2)} kg`;
+  if (unit === 'ml' && value >= 1000) return `${(value / 1000).toFixed(2)} lt`;
+  return `${value % 1 === 0 ? value : value.toFixed(2)} ${unit}`;
+}
 
 // ========== INSUMOS TAB ==========
 function InsumosTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ nombre: '', unidad_medida: 'unidad', costo_por_unidad: 0, stock_actual: 0, stock_minimo: 0 });
+  const [form, setForm] = useState({ nombre: '', unidad_medida: 'g', costo_por_unidad: 0, stock_actual: 0, stock_minimo: 0 });
   const queryClient = useQueryClient();
 
   const { data: insumos, isLoading } = useQuery({
@@ -71,7 +107,7 @@ function InsumosTab() {
 
   const openCreate = () => {
     setEditingId(null);
-    setForm({ nombre: '', unidad_medida: 'unidad', costo_por_unidad: 0, stock_actual: 0, stock_minimo: 0 });
+    setForm({ nombre: '', unidad_medida: 'g', costo_por_unidad: 0, stock_actual: 0, stock_minimo: 0 });
     setDialogOpen(true);
   };
 
@@ -102,13 +138,14 @@ function InsumosTab() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {insumos.map((i: any) => {
             const status = getStockStatus(i);
+            const unit = i.unidad_medida;
             return (
               <Card key={i.id} className={status === 'agotado' ? 'border-destructive/50' : status === 'bajo' ? 'border-orange-400/50' : ''}>
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <h3 className="font-medium">{i.nombre}</h3>
-                      <p className="text-sm text-muted-foreground">{UNIDADES.find(u => u.value === i.unidad_medida)?.label}</p>
+                      <p className="text-sm text-muted-foreground">Unidad base: {getUnitLabel(unit)}</p>
                     </div>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => openEdit(i)}><Pencil className="h-4 w-4" /></Button>
@@ -117,18 +154,22 @@ function InsumosTab() {
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
-                      <span className="text-muted-foreground">Costo:</span>
-                      <span className="ml-1 font-medium">S/ {Number(i.costo_por_unidad).toFixed(2)}</span>
+                      <span className="text-muted-foreground">Costo/{getUnitAbbr(unit)}:</span>
+                      <span className="ml-1 font-medium">S/ {Number(i.costo_por_unidad).toFixed(4)}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Stock:</span>
-                      <span className="ml-1 font-medium">{Number(i.stock_actual)}</span>
+                      <span className="ml-1 font-medium">{formatStock(Number(i.stock_actual), unit)}</span>
                     </div>
+                  </div>
+                  <div className="text-sm mt-1">
+                    <span className="text-muted-foreground">Stock mínimo:</span>
+                    <span className="ml-1">{formatStock(Number(i.stock_minimo), unit)}</span>
                   </div>
                   {status !== 'ok' && (
                     <Badge variant={status === 'agotado' ? 'destructive' : 'outline'} className="mt-2">
                       <AlertTriangle className="h-3 w-3 mr-1" />
-                      {status === 'agotado' ? 'Agotado' : 'Stock bajo'}
+                      {status === 'agotado' ? 'Agotado' : `Stock bajo de ${i.nombre}`}
                     </Badge>
                   )}
                 </CardContent>
@@ -142,18 +183,26 @@ function InsumosTab() {
         <DialogContent>
           <DialogHeader><DialogTitle>{editingId ? 'Editar Insumo' : 'Nuevo Insumo'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>Nombre</Label><Input value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Tomate" /></div>
-            <div><Label>Unidad de medida</Label>
+            <div><Label>Nombre del insumo</Label><Input value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} placeholder="Ej: Tomate" /></div>
+            <div><Label>Unidad base del insumo</Label>
               <Select value={form.unidad_medida} onValueChange={v => setForm(f => ({ ...f, unidad_medida: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{UNIDADES.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent>
+                <SelectContent>{UNIDADES_BASE.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground mt-1">Todos los cálculos de stock y recetas usarán esta unidad</p>
+            </div>
+            <div><Label>Costo por {getUnitAbbr(form.unidad_medida)} (S/)</Label>
+              <Input type="number" step="0.0001" value={form.costo_por_unidad} onChange={e => setForm(f => ({ ...f, costo_por_unidad: parseFloat(e.target.value) || 0 }))} />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Costo por unidad (S/)</Label><Input type="number" step="0.01" value={form.costo_por_unidad} onChange={e => setForm(f => ({ ...f, costo_por_unidad: parseFloat(e.target.value) || 0 }))} /></div>
-              <div><Label>Stock actual</Label><Input type="number" value={form.stock_actual} onChange={e => setForm(f => ({ ...f, stock_actual: parseFloat(e.target.value) || 0 }))} /></div>
+              <div><Label>Stock actual ({getUnitAbbr(form.unidad_medida)})</Label>
+                <Input type="number" step="0.01" value={form.stock_actual} onChange={e => setForm(f => ({ ...f, stock_actual: parseFloat(e.target.value) || 0 }))} />
+              </div>
+              <div><Label>Stock mínimo ({getUnitAbbr(form.unidad_medida)})</Label>
+                <Input type="number" step="0.01" value={form.stock_minimo} onChange={e => setForm(f => ({ ...f, stock_minimo: parseFloat(e.target.value) || 0 }))} />
+                <p className="text-xs text-muted-foreground mt-1">Alerta cuando baje de este valor</p>
+              </div>
             </div>
-            <div><Label>Stock mínimo (alerta)</Label><Input type="number" value={form.stock_minimo} onChange={e => setForm(f => ({ ...f, stock_minimo: parseFloat(e.target.value) || 0 }))} /><p className="text-xs text-muted-foreground mt-1">Se genera alerta cuando el stock baje de este valor</p></div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
               <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.nombre}>
@@ -174,6 +223,7 @@ function RecetasTab() {
   const [addDialog, setAddDialog] = useState(false);
   const [newInsumoId, setNewInsumoId] = useState('');
   const [newCantidad, setNewCantidad] = useState(1);
+  const [newUnidad, setNewUnidad] = useState('');
   const queryClient = useQueryClient();
 
   const { data: productos } = useQuery({
@@ -205,9 +255,29 @@ function RecetasTab() {
     enabled: !!selectedProducto,
   });
 
+  const selectedInsumo = insumos?.find((i: any) => i.id === newInsumoId);
+  const unidadesDisponibles = selectedInsumo ? (UNIDADES_RECETA[selectedInsumo.unidad_medida] || []) : [];
+
+  // When insumo changes, reset unit to base
+  const handleInsumoChange = (id: string) => {
+    setNewInsumoId(id);
+    const ins = insumos?.find((i: any) => i.id === id);
+    setNewUnidad(ins?.unidad_medida || '');
+  };
+
+  const cantidadEnBase = useMemo(() => {
+    if (!selectedInsumo) return newCantidad;
+    return convertToBase(newCantidad, newUnidad, selectedInsumo.unidad_medida);
+  }, [newCantidad, newUnidad, selectedInsumo]);
+
   const addMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('producto_insumos').insert([{ producto_id: selectedProducto, insumo_id: newInsumoId, cantidad: newCantidad }]);
+      // Always store in base unit
+      const { error } = await supabase.from('producto_insumos').insert([{
+        producto_id: selectedProducto,
+        insumo_id: newInsumoId,
+        cantidad: cantidadEnBase,
+      }]);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -216,6 +286,7 @@ function RecetasTab() {
       setAddDialog(false);
       setNewInsumoId('');
       setNewCantidad(1);
+      setNewUnidad('');
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -234,6 +305,18 @@ function RecetasTab() {
 
   const costoTotal = receta?.reduce((acc: number, r: any) => acc + (Number(r.cantidad) * Number(r.insumos?.costo_por_unidad || 0)), 0) || 0;
   const precioProducto = productos?.find((p: any) => p.id === selectedProducto)?.precio || 0;
+  const margen = Number(precioProducto) - costoTotal;
+  const margenPct = Number(precioProducto) > 0 ? (margen / Number(precioProducto)) * 100 : 0;
+
+  // Check stock availability for this recipe
+  const stockWarnings = useMemo(() => {
+    if (!receta || !insumos) return [];
+    return receta.filter((r: any) => {
+      const ins = r.insumos;
+      if (!ins) return false;
+      return Number(ins.stock_actual) < Number(r.cantidad);
+    }).map((r: any) => `Stock insuficiente de ${r.insumos.nombre}: necesitas ${formatStock(Number(r.cantidad), r.insumos.unidad_medida)}, disponible ${formatStock(Number(r.insumos.stock_actual), r.insumos.unidad_medida)}`);
+  }, [receta, insumos]);
 
   return (
     <div className="space-y-4">
@@ -250,55 +333,86 @@ function RecetasTab() {
       </div>
 
       {selectedProducto && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-primary" />
-                Receta / Insumos
-              </CardTitle>
-              <Button size="sm" onClick={() => setAddDialog(true)}><Plus className="h-4 w-4 mr-1" />Agregar insumo</Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {loadingReceta ? (
-              <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
-            ) : !receta?.length ? (
-              <p className="text-muted-foreground text-sm text-center py-4">No hay insumos asignados a este producto</p>
-            ) : (
-              <div className="space-y-2">
-                {receta.map((r: any) => (
-                  <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                    <div>
-                      <span className="font-medium">{r.insumos?.nombre}</span>
-                      <span className="text-muted-foreground ml-2">
-                        {Number(r.cantidad)} {r.insumos?.unidad_medida}
-                      </span>
-                      <span className="text-muted-foreground ml-2">
-                        (S/ {(Number(r.cantidad) * Number(r.insumos?.costo_por_unidad || 0)).toFixed(2)})
-                      </span>
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={() => removeMutation.mutate(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                  </div>
-                ))}
-                <div className="border-t pt-3 mt-3 flex justify-between text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Costo total insumos:</span>
-                    <span className="font-semibold text-primary ml-2">S/ {costoTotal.toFixed(2)}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Precio venta:</span>
-                    <span className="font-semibold ml-2">S/ {Number(precioProducto).toFixed(2)}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Margen:</span>
-                    <span className="font-semibold text-accent ml-2">S/ {(Number(precioProducto) - costoTotal).toFixed(2)}</span>
+        <>
+          {stockWarnings.length > 0 && (
+            <Card className="border-orange-400/50 bg-orange-50 dark:bg-orange-950/20">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-500 mt-0.5 shrink-0" />
+                  <div className="space-y-1">
+                    <p className="font-medium text-orange-700 dark:text-orange-400">Advertencia de stock</p>
+                    {stockWarnings.map((w, idx) => (
+                      <p key={idx} className="text-sm text-orange-600 dark:text-orange-300">{w}</p>
+                    ))}
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-primary" />
+                  Receta / Insumos
+                </CardTitle>
+                <Button size="sm" onClick={() => setAddDialog(true)}><Plus className="h-4 w-4 mr-1" />Agregar insumo</Button>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              {loadingReceta ? (
+                <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+              ) : !receta?.length ? (
+                <p className="text-muted-foreground text-sm text-center py-4">No hay insumos asignados a este producto</p>
+              ) : (
+                <div className="space-y-2">
+                  {receta.map((r: any) => {
+                    const unit = r.insumos?.unidad_medida || '';
+                    const insufficientStock = Number(r.insumos?.stock_actual || 0) < Number(r.cantidad);
+                    return (
+                      <div key={r.id} className={`flex items-center justify-between p-3 rounded-lg ${insufficientStock ? 'bg-destructive/10 border border-destructive/30' : 'bg-secondary/50'}`}>
+                        <div>
+                          <span className="font-medium">{r.insumos?.nombre}</span>
+                          <span className="text-muted-foreground ml-2">
+                            {formatStock(Number(r.cantidad), unit)}
+                          </span>
+                          <span className="text-muted-foreground ml-2">
+                            (S/ {(Number(r.cantidad) * Number(r.insumos?.costo_por_unidad || 0)).toFixed(2)})
+                          </span>
+                          {insufficientStock && (
+                            <Badge variant="destructive" className="ml-2 text-[10px]">
+                              <AlertTriangle className="h-3 w-3 mr-1" />Sin stock
+                            </Badge>
+                          )}
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => removeMutation.mutate(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </div>
+                    );
+                  })}
+                  <div className="border-t pt-3 mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Costo insumos:</span>
+                      <p className="font-semibold text-primary">S/ {costoTotal.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Precio venta:</span>
+                      <p className="font-semibold">S/ {Number(precioProducto).toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Margen:</span>
+                      <p className={`font-semibold ${margen >= 0 ? 'text-green-600' : 'text-destructive'}`}>S/ {margen.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">% Margen:</span>
+                      <p className={`font-semibold ${margenPct >= 0 ? 'text-green-600' : 'text-destructive'}`}>{margenPct.toFixed(1)}%</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
 
       <Dialog open={addDialog} onOpenChange={setAddDialog}>
@@ -306,15 +420,30 @@ function RecetasTab() {
           <DialogHeader><DialogTitle>Agregar insumo a la receta</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div><Label>Insumo</Label>
-              <Select value={newInsumoId} onValueChange={setNewInsumoId}>
+              <Select value={newInsumoId} onValueChange={handleInsumoChange}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar insumo..." /></SelectTrigger>
-                <SelectContent>{insumos?.map((i: any) => <SelectItem key={i.id} value={i.id}>{i.nombre} ({i.unidad_medida})</SelectItem>)}</SelectContent>
+                <SelectContent>{insumos?.map((i: any) => <SelectItem key={i.id} value={i.id}>{i.nombre} ({getUnitLabel(i.unidad_medida)})</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Cantidad</Label><Input type="number" step="0.01" value={newCantidad} onChange={e => setNewCantidad(parseFloat(e.target.value) || 0)} /></div>
+            {newInsumoId && unidadesDisponibles.length > 1 && (
+              <div><Label>Unidad</Label>
+                <Select value={newUnidad} onValueChange={setNewUnidad}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{unidadesDisponibles.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            )}
+            <div><Label>Cantidad {newUnidad ? `(${newUnidad})` : ''}</Label>
+              <Input type="number" step="0.01" value={newCantidad} onChange={e => setNewCantidad(parseFloat(e.target.value) || 0)} />
+            </div>
+            {newInsumoId && newUnidad !== selectedInsumo?.unidad_medida && newCantidad > 0 && (
+              <p className="text-sm text-muted-foreground">
+                Equivale a: <span className="font-semibold text-foreground">{formatStock(cantidadEnBase, selectedInsumo?.unidad_medida || '')}</span> (unidad base)
+              </p>
+            )}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setAddDialog(false)}>Cancelar</Button>
-              <Button onClick={() => addMutation.mutate()} disabled={!newInsumoId || addMutation.isPending}>
+              <Button onClick={() => addMutation.mutate()} disabled={!newInsumoId || newCantidad <= 0 || addMutation.isPending}>
                 {addMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Agregar
               </Button>
@@ -329,7 +458,7 @@ function RecetasTab() {
 // ========== COMPRAS TAB ==========
 function ComprasTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ insumo_id: '', cantidad: 0, costo_unitario: 0, proveedor: '', nota: '' });
+  const [form, setForm] = useState({ insumo_id: '', cantidad: 0, unidad_compra: '', costo_unitario: 0, proveedor: '', nota: '' });
   const queryClient = useQueryClient();
 
   const { data: insumos } = useQuery({
@@ -350,30 +479,45 @@ function ComprasTab() {
     },
   });
 
+  const selectedInsumo = insumos?.find((i: any) => i.id === form.insumo_id);
+  const unidadesCompra = selectedInsumo ? (UNIDADES_COMPRA[selectedInsumo.unidad_medida] || []) : [];
+
+  const handleInsumoChange = (id: string) => {
+    const ins = insumos?.find((i: any) => i.id === id);
+    setForm(f => ({ ...f, insumo_id: id, unidad_compra: ins?.unidad_medida || '' }));
+  };
+
+  const cantidadEnBase = useMemo(() => {
+    if (!selectedInsumo) return form.cantidad;
+    return convertToBase(form.cantidad, form.unidad_compra, selectedInsumo.unidad_medida);
+  }, [form.cantidad, form.unidad_compra, selectedInsumo]);
+
+  // Costo por unidad base
+  const costoTotal = form.cantidad * form.costo_unitario;
+  const costoPorBase = cantidadEnBase > 0 ? costoTotal / cantidadEnBase : 0;
+
   const compraMutation = useMutation({
     mutationFn: async () => {
-      const costoTotal = form.cantidad * form.costo_unitario;
-      // Insert purchase record
+      if (!selectedInsumo) throw new Error('Selecciona un insumo');
+
+      // Insert purchase record (stored in base units)
       const { error: compraError } = await supabase.from('compras_insumos').insert([{
         insumo_id: form.insumo_id,
-        cantidad: form.cantidad,
-        costo_unitario: form.costo_unitario,
+        cantidad: cantidadEnBase,
+        costo_unitario: costoPorBase,
         costo_total: costoTotal,
         proveedor: form.proveedor || null,
         nota: form.nota || null,
       }]);
       if (compraError) throw compraError;
 
-      // Update insumo stock and cost
-      const insumo = insumos?.find((i: any) => i.id === form.insumo_id);
-      if (insumo) {
-        const newStock = Number(insumo.stock_actual) + form.cantidad;
-        const { error: updateError } = await supabase.from('insumos').update({
-          stock_actual: newStock,
-          costo_por_unidad: form.costo_unitario, // Update to latest cost
-        }).eq('id', form.insumo_id);
-        if (updateError) throw updateError;
-      }
+      // Update insumo stock
+      const newStock = Number(selectedInsumo.stock_actual) + cantidadEnBase;
+      const { error: updateError } = await supabase.from('insumos').update({
+        stock_actual: newStock,
+        costo_por_unidad: costoPorBase,
+      }).eq('id', form.insumo_id);
+      if (updateError) throw updateError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['compras_insumos'] });
@@ -388,7 +532,7 @@ function ComprasTab() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <p className="text-muted-foreground">Registra compras para reabastecer el stock</p>
-        <Button onClick={() => { setForm({ insumo_id: '', cantidad: 0, costo_unitario: 0, proveedor: '', nota: '' }); setDialogOpen(true); }}>
+        <Button onClick={() => { setForm({ insumo_id: '', cantidad: 0, unidad_compra: '', costo_unitario: 0, proveedor: '', nota: '' }); setDialogOpen(true); }}>
           <ShoppingCart className="h-4 w-4 mr-2" />Registrar Compra
         </Button>
       </div>
@@ -399,21 +543,24 @@ function ComprasTab() {
         <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No hay compras registradas.</p></CardContent></Card>
       ) : (
         <div className="space-y-2">
-          {compras.map((c: any) => (
-            <Card key={c.id}>
-              <CardContent className="p-4 flex items-center justify-between">
-                <div>
-                  <span className="font-medium">{(c as any).insumos?.nombre}</span>
-                  <span className="text-muted-foreground ml-2">+{Number(c.cantidad)} {(c as any).insumos?.unidad_medida}</span>
-                  {c.proveedor && <Badge variant="outline" className="ml-2">{c.proveedor}</Badge>}
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-primary">S/ {Number(c.costo_total).toFixed(2)}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(c.created_at).toLocaleDateString('es-PE')}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {compras.map((c: any) => {
+            const unit = (c as any).insumos?.unidad_medida || '';
+            return (
+              <Card key={c.id}>
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div>
+                    <span className="font-medium">{(c as any).insumos?.nombre}</span>
+                    <span className="text-muted-foreground ml-2">+{formatStock(Number(c.cantidad), unit)}</span>
+                    {c.proveedor && <Badge variant="outline" className="ml-2">{c.proveedor}</Badge>}
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-primary">S/ {Number(c.costo_total).toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(c.created_at).toLocaleDateString('es-PE')}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -422,23 +569,45 @@ function ComprasTab() {
           <DialogHeader><DialogTitle>Registrar Compra</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div><Label>Insumo</Label>
-              <Select value={form.insumo_id} onValueChange={v => setForm(f => ({ ...f, insumo_id: v }))}>
+              <Select value={form.insumo_id} onValueChange={handleInsumoChange}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar insumo..." /></SelectTrigger>
-                <SelectContent>{insumos?.map((i: any) => <SelectItem key={i.id} value={i.id}>{i.nombre} ({i.unidad_medida})</SelectItem>)}</SelectContent>
+                <SelectContent>{insumos?.map((i: any) => <SelectItem key={i.id} value={i.id}>{i.nombre} (base: {getUnitAbbr(i.unidad_medida)})</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Cantidad</Label><Input type="number" step="0.01" value={form.cantidad} onChange={e => setForm(f => ({ ...f, cantidad: parseFloat(e.target.value) || 0 }))} /></div>
-              <div><Label>Costo unitario (S/)</Label><Input type="number" step="0.01" value={form.costo_unitario} onChange={e => setForm(f => ({ ...f, costo_unitario: parseFloat(e.target.value) || 0 }))} /></div>
+              <div>
+                <Label>Cantidad comprada</Label>
+                <Input type="number" step="0.01" value={form.cantidad} onChange={e => setForm(f => ({ ...f, cantidad: parseFloat(e.target.value) || 0 }))} />
+              </div>
+              <div>
+                <Label>Unidad de compra</Label>
+                <Select value={form.unidad_compra} onValueChange={v => setForm(f => ({ ...f, unidad_compra: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Unidad..." /></SelectTrigger>
+                  <SelectContent>{unidadesCompra.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
             </div>
-            {form.cantidad > 0 && form.costo_unitario > 0 && (
-              <p className="text-sm text-muted-foreground">Total: <span className="font-semibold text-foreground">S/ {(form.cantidad * form.costo_unitario).toFixed(2)}</span></p>
+            <div>
+              <Label>Costo total de la compra (S/)</Label>
+              <Input type="number" step="0.01" value={form.costo_unitario > 0 ? costoTotal : ''} onChange={e => {
+                const total = parseFloat(e.target.value) || 0;
+                setForm(f => ({ ...f, costo_unitario: f.cantidad > 0 ? total / f.cantidad : 0 }));
+              }} />
+            </div>
+            {cantidadEnBase > 0 && form.unidad_compra !== selectedInsumo?.unidad_medida && (
+              <div className="rounded-lg bg-secondary/50 p-3 text-sm space-y-1">
+                <p>Conversión: <span className="font-semibold">{form.cantidad} {form.unidad_compra}</span> → <span className="font-semibold">{formatStock(cantidadEnBase, selectedInsumo?.unidad_medida || '')}</span></p>
+                {costoPorBase > 0 && <p>Costo por {getUnitAbbr(selectedInsumo?.unidad_medida || '')}: <span className="font-semibold">S/ {costoPorBase.toFixed(4)}</span></p>}
+              </div>
+            )}
+            {cantidadEnBase > 0 && form.unidad_compra === selectedInsumo?.unidad_medida && costoPorBase > 0 && (
+              <p className="text-sm text-muted-foreground">Costo por {getUnitAbbr(selectedInsumo?.unidad_medida || '')}: <span className="font-semibold text-foreground">S/ {costoPorBase.toFixed(4)}</span></p>
             )}
             <div><Label>Proveedor (opcional)</Label><Input value={form.proveedor} onChange={e => setForm(f => ({ ...f, proveedor: e.target.value }))} placeholder="Ej: Mercado Central" /></div>
             <div><Label>Nota (opcional)</Label><Input value={form.nota} onChange={e => setForm(f => ({ ...f, nota: e.target.value }))} placeholder="Ej: Compra semanal" /></div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={() => compraMutation.mutate()} disabled={!form.insumo_id || form.cantidad <= 0 || compraMutation.isPending}>
+              <Button onClick={() => compraMutation.mutate()} disabled={!form.insumo_id || form.cantidad <= 0 || !form.unidad_compra || compraMutation.isPending}>
                 {compraMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Registrar
               </Button>
@@ -525,7 +694,6 @@ function AlertasTab() {
 
   return (
     <div className="space-y-6">
-      {/* Config */}
       <Card>
         <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Bell className="h-5 w-5 text-primary" />Configuración de alertas</CardTitle></CardHeader>
         <CardContent className="space-y-4">
@@ -553,7 +721,6 @@ function AlertasTab() {
         </CardContent>
       </Card>
 
-      {/* Notifications list */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
