@@ -469,9 +469,9 @@ export default function Ordenes() {
       ? (['pendiente', 'confirmado', 'en_preparacion', 'listo', 'entregado'] as const).filter(s => isEstadoVisible(s)) as Exclude<OrderState, 'cancelado'>[]
       : (['pendiente', 'confirmado', 'en_preparacion', 'listo', 'en_camino', 'entregado'] as const).filter(s => isEstadoVisible(s)) as Exclude<OrderState, 'cancelado'>[];
     
-    const currentIndex = validStates.indexOf(currentStatus as Exclude<OrderState, 'cancelado'>);
-    if (currentIndex === -1 || currentIndex >= validStates.length - 1) return null;
-    return validStates[currentIndex + 1];
+    const currentIndex = baseStates.indexOf(currentStatus as Exclude<OrderState, 'cancelado'>);
+    if (currentIndex === -1 || currentIndex >= baseStates.length - 1) return null;
+    return baseStates[currentIndex + 1];
   };
 
   const getNextStatusButton = (order: Order) => {
