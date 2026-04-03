@@ -27,6 +27,8 @@ interface ConfiguracionEmpresa {
   serie_factura: string;
   numero_factura: number;
   mensaje_pie: string | null;
+  tipo_negocio: string;
+  estados_pedido_visibles: string[];
 }
 
 export default function Configuracion() {
