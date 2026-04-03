@@ -830,7 +830,7 @@ export default function Ordenes() {
             })}
           </TabsList>
 
-          {ORDER_STATES.map(state => (
+          {visibleOrderStates.map(state => (
             <TabsContent key={state} value={state}>
               <Card>
                 <CardHeader>
