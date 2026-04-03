@@ -180,6 +180,7 @@ export default function RolesCustomManager() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rol-permisos', selectedRolId] });
+      queryClient.invalidateQueries({ queryKey: ['modulos-activos'] });
     },
     onError: () => toast.error('Error al actualizar permiso'),
   });
@@ -189,7 +190,6 @@ export default function RolesCustomManager() {
       modulos.find(m => m.id === permiso.modulo_id)?.clave || ''
     ] || [];
     
-    // Update all fields at once
     supabase
       .from('rol_permisos')
       .update({
@@ -201,8 +201,13 @@ export default function RolesCustomManager() {
       })
       .eq('id', permiso.id)
       .then(({ error }) => {
-        if (error) toast.error('Error');
-        else queryClient.invalidateQueries({ queryKey: ['rol-permisos', selectedRolId] });
+        if (error) {
+          toast.error('Error');
+          return;
+        }
+
+        queryClient.invalidateQueries({ queryKey: ['rol-permisos', selectedRolId] });
+        queryClient.invalidateQueries({ queryKey: ['modulos-activos'] });
       });
   };
 
@@ -222,6 +227,7 @@ export default function RolesCustomManager() {
       })
     ).then(() => {
       queryClient.invalidateQueries({ queryKey: ['rol-permisos', selectedRolId] });
+      queryClient.invalidateQueries({ queryKey: ['modulos-activos'] });
       toast.success(enable ? 'Todos los permisos activados' : 'Todos los permisos desactivados');
     });
   };
