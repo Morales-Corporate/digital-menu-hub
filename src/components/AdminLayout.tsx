@@ -53,6 +53,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const { isModuloActivo } = useModulosActivos();
+
+  // Filter nav items based on active modules (external links always shown, configuracion/roles always shown)
+  const filteredNavItems = navItems.filter(item => {
+    if (item.external) return true;
+    // Always show configuracion and roles (needed to manage modules)
+    if (item.href === '/admin/configuracion' || item.href === '/admin/roles' || item.href === '/admin') return true;
+    return isModuloActivo(item.href);
+  });
 
   const handleSignOut = async () => {
     await signOut();
