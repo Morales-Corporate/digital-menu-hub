@@ -108,7 +108,9 @@ export default function Configuracion() {
             numero_boleta: data.numero_boleta || 1,
             serie_factura: data.serie_factura || 'F001',
             numero_factura: data.numero_factura || 1,
-            mensaje_pie: data.mensaje_pie
+            mensaje_pie: data.mensaje_pie,
+            tipo_negocio: data.tipo_negocio || 'restaurante',
+            estados_pedido_visibles: data.estados_pedido_visibles || ['pendiente','confirmado','en_preparacion','listo','entregado','pagado'],
           });
         if (error) throw error;
       }
