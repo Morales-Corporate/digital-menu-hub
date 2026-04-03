@@ -287,11 +287,23 @@ export default function Roles() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground">Usuarios / Roles</h1>
-            <p className="text-muted-foreground mt-1">Gestiona usuarios y asigna roles del sistema</p>
-          </div>
+        <div>
+          <h1 className="text-3xl font-display font-bold text-foreground">Usuarios / Roles</h1>
+          <p className="text-muted-foreground mt-1">Gestiona usuarios, roles y permisos del sistema</p>
+        </div>
+
+        <Tabs defaultValue="usuarios" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="usuarios" className="gap-1.5">
+              <UserCog className="h-4 w-4" /> Usuarios
+            </TabsTrigger>
+            <TabsTrigger value="roles" className="gap-1.5">
+              <Shield className="h-4 w-4" /> Roles y Permisos
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="usuarios" className="space-y-6">
+        <div className="flex items-center justify-end">
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2">
