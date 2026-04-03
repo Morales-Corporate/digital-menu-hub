@@ -86,6 +86,9 @@ export default function Configuracion() {
             numero_boleta: data.numero_boleta,
             serie_factura: data.serie_factura,
             numero_factura: data.numero_factura,
+            mensaje_pie: data.mensaje_pie,
+            tipo_negocio: data.tipo_negocio,
+            estados_pedido_visibles: data.estados_pedido_visibles,
             mensaje_pie: data.mensaje_pie
           })
           .eq('id', config.id);
