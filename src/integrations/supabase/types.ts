@@ -691,6 +691,42 @@ export type Database = {
         }
         Relationships: []
       }
+      modulos: {
+        Row: {
+          activo: boolean
+          clave: string
+          created_at: string | null
+          grupo: string | null
+          icono: string | null
+          id: string
+          nombre: string
+          orden: number | null
+          ruta: string | null
+        }
+        Insert: {
+          activo?: boolean
+          clave: string
+          created_at?: string | null
+          grupo?: string | null
+          icono?: string | null
+          id?: string
+          nombre: string
+          orden?: number | null
+          ruta?: string | null
+        }
+        Update: {
+          activo?: boolean
+          clave?: string
+          created_at?: string | null
+          grupo?: string | null
+          icono?: string | null
+          id?: string
+          nombre?: string
+          orden?: number | null
+          ruta?: string | null
+        }
+        Relationships: []
+      }
       movimientos_caja: {
         Row: {
           created_at: string
@@ -1030,6 +1066,90 @@ export type Database = {
           nombre?: string
           porcentaje_descuento?: number
           puntos_requeridos?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      rol_permisos: {
+        Row: {
+          acciones_especiales: Json | null
+          crear: boolean
+          created_at: string | null
+          editar: boolean
+          eliminar: boolean
+          id: string
+          modulo_id: string
+          rol_id: string
+          updated_at: string | null
+          ver: boolean
+        }
+        Insert: {
+          acciones_especiales?: Json | null
+          crear?: boolean
+          created_at?: string | null
+          editar?: boolean
+          eliminar?: boolean
+          id?: string
+          modulo_id: string
+          rol_id: string
+          updated_at?: string | null
+          ver?: boolean
+        }
+        Update: {
+          acciones_especiales?: Json | null
+          crear?: boolean
+          created_at?: string | null
+          editar?: boolean
+          eliminar?: boolean
+          id?: string
+          modulo_id?: string
+          rol_id?: string
+          updated_at?: string | null
+          ver?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rol_permisos_modulo_id_fkey"
+            columns: ["modulo_id"]
+            isOneToOne: false
+            referencedRelation: "modulos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rol_permisos_rol_id_fkey"
+            columns: ["rol_id"]
+            isOneToOne: false
+            referencedRelation: "roles_custom"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roles_custom: {
+        Row: {
+          activo: boolean
+          created_at: string | null
+          descripcion: string | null
+          es_sistema: boolean
+          id: string
+          nombre: string
+          updated_at: string | null
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string | null
+          descripcion?: string | null
+          es_sistema?: boolean
+          id?: string
+          nombre: string
+          updated_at?: string | null
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string | null
+          descripcion?: string | null
+          es_sistema?: boolean
+          id?: string
+          nombre?: string
           updated_at?: string | null
         }
         Relationships: []
