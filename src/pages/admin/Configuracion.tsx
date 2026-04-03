@@ -8,8 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Settings, Building2, FileText, Hash, Save, Loader2 } from 'lucide-react';
+import { Settings, Building2, FileText, Hash, Save, Loader2, Store } from 'lucide-react';
 
 interface ConfiguracionEmpresa {
   id: string;
