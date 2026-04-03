@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { format, differenceInMinutes, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
+import { useBusinessConfig } from '@/hooks/useBusinessConfig';
 import CrearPedidoModal from '@/components/admin/CrearPedidoModal';
 import EmitirComprobanteModal from '@/components/admin/EmitirComprobanteModal';
 
