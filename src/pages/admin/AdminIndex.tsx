@@ -51,6 +51,7 @@ interface DailySummary {
 }
 
 export default function AdminIndex() {
+  const { isEstadoVisible } = useBusinessConfig();
   const [counts, setCounts] = useState<OrderCounts>({ pendiente: 0, confirmado: 0, en_preparacion: 0, listo: 0, en_camino: 0, entregado: 0 });
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [loading, setLoading] = useState(true);
