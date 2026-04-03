@@ -320,49 +320,61 @@ export default function AdminIndex() {
         </Card>
 
         {/* Status cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-          <StatusCard 
-            title="Pendientes" 
-            count={counts.pendiente} 
-            icon={Clock}
-            color="text-amber-600"
-            bgColor="bg-amber-100"
-          />
-          <StatusCard 
-            title="Confirmados" 
-            count={counts.confirmado} 
-            icon={CheckCircle}
-            color="text-blue-600"
-            bgColor="bg-blue-100"
-          />
-          <StatusCard 
-            title="En Preparación" 
-            count={counts.en_preparacion} 
-            icon={UtensilsCrossed}
-            color="text-orange-600"
-            bgColor="bg-orange-100"
-          />
-          <StatusCard 
-            title="Listos" 
-            count={counts.listo} 
-            icon={ChefHat}
-            color="text-teal-600"
-            bgColor="bg-teal-100"
-          />
-          <StatusCard 
-            title="En Camino" 
-            count={counts.en_camino} 
-            icon={Truck}
-            color="text-purple-600"
-            bgColor="bg-purple-100"
-          />
-          <StatusCard 
-            title="Entregados" 
-            count={counts.entregado} 
-            icon={Package}
-            color="text-green-600"
-            bgColor="bg-green-100"
-          />
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          {isEstadoVisible('pendiente') && (
+            <StatusCard 
+              title="Pendientes" 
+              count={counts.pendiente} 
+              icon={Clock}
+              color="text-amber-600"
+              bgColor="bg-amber-100"
+            />
+          )}
+          {isEstadoVisible('confirmado') && (
+            <StatusCard 
+              title="Confirmados" 
+              count={counts.confirmado} 
+              icon={CheckCircle}
+              color="text-blue-600"
+              bgColor="bg-blue-100"
+            />
+          )}
+          {isEstadoVisible('en_preparacion') && (
+            <StatusCard 
+              title="En Preparación" 
+              count={counts.en_preparacion} 
+              icon={UtensilsCrossed}
+              color="text-orange-600"
+              bgColor="bg-orange-100"
+            />
+          )}
+          {isEstadoVisible('listo') && (
+            <StatusCard 
+              title="Listos" 
+              count={counts.listo} 
+              icon={ChefHat}
+              color="text-teal-600"
+              bgColor="bg-teal-100"
+            />
+          )}
+          {isEstadoVisible('en_camino') && (
+            <StatusCard 
+              title="En Camino" 
+              count={counts.en_camino} 
+              icon={Truck}
+              color="text-purple-600"
+              bgColor="bg-purple-100"
+            />
+          )}
+          {isEstadoVisible('entregado') && (
+            <StatusCard 
+              title="Entregados" 
+              count={counts.entregado} 
+              icon={Package}
+              color="text-green-600"
+              bgColor="bg-green-100"
+            />
+          )}
         </div>
 
         {/* Pending orders alert */}
