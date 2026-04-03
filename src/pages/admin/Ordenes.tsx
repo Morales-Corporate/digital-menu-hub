@@ -464,11 +464,10 @@ export default function Ordenes() {
     // Different flow for mesa orders vs delivery orders
     const isMesaOrder = order.numero_mesa !== null;
     
-    // Mesa: pendiente → confirmado → en_preparacion → listo → entregado (NO en_camino)
-    // Delivery: pendiente → confirmado → en_preparacion → listo → en_camino → entregado
-    const validStates: Exclude<OrderState, 'cancelado'>[] = isMesaOrder
-      ? ['pendiente', 'confirmado', 'en_preparacion', 'listo', 'entregado']
-      : ['pendiente', 'confirmado', 'en_preparacion', 'listo', 'en_camino', 'entregado'];
+    // Build valid states from visible states, excluding cancelado
+    const baseStates: Exclude<OrderState, 'cancelado'>[] = isMesaOrder
+      ? (['pendiente', 'confirmado', 'en_preparacion', 'listo', 'entregado'] as const).filter(s => isEstadoVisible(s)) as Exclude<OrderState, 'cancelado'>[]
+      : (['pendiente', 'confirmado', 'en_preparacion', 'listo', 'en_camino', 'entregado'] as const).filter(s => isEstadoVisible(s)) as Exclude<OrderState, 'cancelado'>[];
     
     const currentIndex = validStates.indexOf(currentStatus as Exclude<OrderState, 'cancelado'>);
     if (currentIndex === -1 || currentIndex >= validStates.length - 1) return null;
