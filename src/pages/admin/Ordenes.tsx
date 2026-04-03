@@ -77,6 +77,8 @@ const STATE_CONFIG: Record<OrderState, { label: string; icon: React.ElementType;
 };
 
 export default function Ordenes() {
+  const { isEstadoVisible, estadosVisibles } = useBusinessConfig();
+  const visibleOrderStates = ORDER_STATES.filter(s => s === 'cancelado' || isEstadoVisible(s));
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
