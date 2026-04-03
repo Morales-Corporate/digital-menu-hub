@@ -133,8 +133,40 @@ export default function Configuracion() {
     saveMutation.mutate(formData);
   };
 
-  const handleChange = (field: keyof ConfiguracionEmpresa, value: string | number) => {
+  const handleChange = (field: keyof ConfiguracionEmpresa, value: string | number | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const ALL_ESTADOS = [
+    { key: 'pendiente', label: 'Pendiente' },
+    { key: 'confirmado', label: 'Confirmado' },
+    { key: 'en_preparacion', label: 'En Preparación' },
+    { key: 'listo', label: 'Listo' },
+    { key: 'en_camino', label: 'En Camino' },
+    { key: 'entregado', label: 'Entregado' },
+    { key: 'pagado', label: 'Pagado' },
+  ];
+
+  const TIPO_PRESETS: Record<string, string[]> = {
+    cafeteria: ['pendiente', 'confirmado', 'en_preparacion', 'listo', 'entregado', 'pagado'],
+    restaurante: ['pendiente', 'confirmado', 'en_preparacion', 'listo', 'entregado', 'pagado'],
+    delivery: ['pendiente', 'confirmado', 'en_preparacion', 'listo', 'en_camino', 'entregado', 'pagado'],
+  };
+
+  const handleTipoNegocioChange = (tipo: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tipo_negocio: tipo,
+      estados_pedido_visibles: TIPO_PRESETS[tipo] || prev.estados_pedido_visibles,
+    }));
+  };
+
+  const toggleEstado = (estado: string) => {
+    const current = formData.estados_pedido_visibles || [];
+    const updated = current.includes(estado)
+      ? current.filter(e => e !== estado)
+      : [...current, estado];
+    handleChange('estados_pedido_visibles', updated);
   };
 
   if (isLoading) {
