@@ -3,10 +3,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
 interface ModuloRow {
+  id: string;
   clave: string;
   ruta: string | null;
   activo: boolean;
-  rol_permisos?: { ver: boolean }[];
+  canView?: boolean;
+}
+
+interface PermisoRow {
+  modulo_id: string;
+  ver: boolean;
 }
 
 const ROLE_NAME_MAP: Record<string, string> = {
@@ -33,34 +39,41 @@ export function useModulosActivos() {
 
       if (rolError) throw rolError;
 
-      const { data, error } = await supabase
+      const { data: modulosData, error: modulosError } = await supabase
         .from('modulos')
-        .select(`
-          clave,
-          ruta,
-          activo,
-          rol_permisos!left(ver)
-        `)
+        .select('id, clave, ruta, activo')
         .order('orden');
 
-      if (error) throw error;
+      if (modulosError) throw modulosError;
 
-      return ((data ?? []) as unknown as ModuloRow[]).map((modulo) => {
-        const canViewByRole = !rol
-          ? true
-          : modulo.rol_permisos?.some((permiso) => permiso.ver) ?? false;
-
-        return {
+      if (!rol?.id) {
+        return ((modulosData ?? []) as ModuloRow[]).map((modulo) => ({
           ...modulo,
-          canView: modulo.activo && canViewByRole,
-        };
-      });
+          canView: modulo.activo,
+        }));
+      }
+
+      const { data: permisosData, error: permisosError } = await supabase
+        .from('rol_permisos')
+        .select('modulo_id, ver')
+        .eq('rol_id', rol.id);
+
+      if (permisosError) throw permisosError;
+
+      const permisosPorModulo = new Map(
+        ((permisosData ?? []) as PermisoRow[]).map((permiso) => [permiso.modulo_id, permiso.ver])
+      );
+
+      return ((modulosData ?? []) as ModuloRow[]).map((modulo) => ({
+        ...modulo,
+        canView: modulo.activo && Boolean(permisosPorModulo.get(modulo.id)),
+      }));
     },
     staleTime: 60_000,
   });
 
   const rutasActivas = new Set(
-    (modulos ?? []).filter(m => m.canView).map(m => m.ruta).filter(Boolean)
+    (modulos ?? []).filter((m) => m.canView).map((m) => m.ruta).filter(Boolean)
   );
 
   const isModuloActivo = (ruta: string) => rutasActivas.has(ruta);
