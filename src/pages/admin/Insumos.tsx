@@ -59,11 +59,22 @@ function formatStock(value: number, unit: string): string {
   return `${value % 1 === 0 ? value : value.toFixed(2)} ${unit}`;
 }
 
+function getStockPercentage(stockActual: number, stockRef: number): number {
+  if (stockRef <= 0) return -1;
+  return Math.min(100, Math.max(0, (stockActual / stockRef) * 100));
+}
+
+function getStockColor(pct: number): { bg: string; text: string; label: string } {
+  if (pct > 60) return { bg: 'bg-green-500', text: 'text-green-600 dark:text-green-400', label: 'Óptimo' };
+  if (pct > 30) return { bg: 'bg-yellow-500', text: 'text-yellow-600 dark:text-yellow-400', label: 'Medio' };
+  return { bg: 'bg-red-500', text: 'text-red-600 dark:text-red-400', label: 'Bajo' };
+}
+
 // ========== INSUMOS TAB ==========
 function InsumosTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ nombre: '', unidad_medida: 'g', costo_por_unidad: 0, stock_actual: 0, stock_minimo: 0 });
+  const [form, setForm] = useState({ nombre: '', unidad_medida: 'g', costo_por_unidad: 0, stock_actual: 0, stock_minimo: 0, stock_inicial_referencia: 0 });
   const queryClient = useQueryClient();
 
   const { data: insumos, isLoading } = useQuery({
