@@ -117,6 +117,7 @@ export default function Configuracion() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configuracion-empresa'] });
+      queryClient.invalidateQueries({ queryKey: ['business-config'] });
       toast.success('Configuración guardada correctamente');
     },
     onError: (error: any) => {
