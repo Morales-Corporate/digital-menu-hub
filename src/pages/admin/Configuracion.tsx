@@ -8,8 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Settings, Building2, FileText, Hash, Save, Loader2 } from 'lucide-react';
+import { Settings, Building2, FileText, Hash, Save, Loader2, Store } from 'lucide-react';
 
 interface ConfiguracionEmpresa {
   id: string;
@@ -25,6 +27,8 @@ interface ConfiguracionEmpresa {
   serie_factura: string;
   numero_factura: number;
   mensaje_pie: string | null;
+  tipo_negocio: string;
+  estados_pedido_visibles: string[];
 }
 
 export default function Configuracion() {
@@ -41,7 +45,9 @@ export default function Configuracion() {
     numero_boleta: 1,
     serie_factura: 'F001',
     numero_factura: 1,
-    mensaje_pie: 'Gracias por su preferencia'
+    mensaje_pie: 'Gracias por su preferencia',
+    tipo_negocio: 'restaurante',
+    estados_pedido_visibles: ['pendiente', 'confirmado', 'en_preparacion', 'listo', 'entregado', 'pagado'],
   });
 
   const { data: config, isLoading } = useQuery({
@@ -80,7 +86,9 @@ export default function Configuracion() {
             numero_boleta: data.numero_boleta,
             serie_factura: data.serie_factura,
             numero_factura: data.numero_factura,
-            mensaje_pie: data.mensaje_pie
+            mensaje_pie: data.mensaje_pie,
+            tipo_negocio: data.tipo_negocio,
+            estados_pedido_visibles: data.estados_pedido_visibles,
           })
           .eq('id', config.id);
         if (error) throw error;
@@ -100,13 +108,16 @@ export default function Configuracion() {
             numero_boleta: data.numero_boleta || 1,
             serie_factura: data.serie_factura || 'F001',
             numero_factura: data.numero_factura || 1,
-            mensaje_pie: data.mensaje_pie
+            mensaje_pie: data.mensaje_pie,
+            tipo_negocio: data.tipo_negocio || 'restaurante',
+            estados_pedido_visibles: data.estados_pedido_visibles || ['pendiente','confirmado','en_preparacion','listo','entregado','pagado'],
           });
         if (error) throw error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configuracion-empresa'] });
+      queryClient.invalidateQueries({ queryKey: ['business-config'] });
       toast.success('Configuración guardada correctamente');
     },
     onError: (error: any) => {
@@ -123,8 +134,40 @@ export default function Configuracion() {
     saveMutation.mutate(formData);
   };
 
-  const handleChange = (field: keyof ConfiguracionEmpresa, value: string | number) => {
+  const handleChange = (field: keyof ConfiguracionEmpresa, value: string | number | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const ALL_ESTADOS = [
+    { key: 'pendiente', label: 'Pendiente' },
+    { key: 'confirmado', label: 'Confirmado' },
+    { key: 'en_preparacion', label: 'En Preparación' },
+    { key: 'listo', label: 'Listo' },
+    { key: 'en_camino', label: 'En Camino' },
+    { key: 'entregado', label: 'Entregado' },
+    { key: 'pagado', label: 'Pagado' },
+  ];
+
+  const TIPO_PRESETS: Record<string, string[]> = {
+    cafeteria: ['pendiente', 'confirmado', 'en_preparacion', 'listo', 'entregado', 'pagado'],
+    restaurante: ['pendiente', 'confirmado', 'en_preparacion', 'listo', 'entregado', 'pagado'],
+    delivery: ['pendiente', 'confirmado', 'en_preparacion', 'listo', 'en_camino', 'entregado', 'pagado'],
+  };
+
+  const handleTipoNegocioChange = (tipo: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tipo_negocio: tipo,
+      estados_pedido_visibles: TIPO_PRESETS[tipo] || prev.estados_pedido_visibles,
+    }));
+  };
+
+  const toggleEstado = (estado: string) => {
+    const current = formData.estados_pedido_visibles || [];
+    const updated = current.includes(estado)
+      ? current.filter(e => e !== estado)
+      : [...current, estado];
+    handleChange('estados_pedido_visibles', updated);
   };
 
   if (isLoading) {
@@ -314,6 +357,66 @@ export default function Configuracion() {
                 <p className="text-sm text-muted-foreground mt-2">
                   Próxima factura: {formData.serie_factura}-{String(formData.numero_factura || 1).padStart(8, '0')}
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Tipo de Negocio y Estados */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Store className="h-5 w-5" />
+                Tipo de Negocio
+              </CardTitle>
+              <CardDescription>
+                Configura el tipo de negocio para adaptar los estados de pedido
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label>Tipo de negocio</Label>
+                <Select value={formData.tipo_negocio || 'restaurante'} onValueChange={handleTipoNegocioChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cafeteria">Cafetería</SelectItem>
+                    <SelectItem value="restaurante">Restaurante</SelectItem>
+                    <SelectItem value="delivery">Delivery</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Al cambiar el tipo se preseleccionan los estados recomendados. Puedes personalizar abajo.
+                </p>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-3">
+                <Label>Estados de pedido visibles</Label>
+                <p className="text-sm text-muted-foreground">
+                  Marca los estados que se mostrarán en el sistema. Los pedidos existentes no se verán afectados.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {ALL_ESTADOS.map(estado => {
+                    const checked = (formData.estados_pedido_visibles || []).includes(estado.key);
+                    const isRequired = ['pendiente', 'entregado'].includes(estado.key);
+                    return (
+                      <div key={estado.key} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`estado-${estado.key}`}
+                          checked={checked}
+                          disabled={isRequired}
+                          onCheckedChange={() => toggleEstado(estado.key)}
+                        />
+                        <Label htmlFor={`estado-${estado.key}`} className="text-sm cursor-pointer">
+                          {estado.label}
+                          {isRequired && <span className="text-muted-foreground ml-1">(requerido)</span>}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useModulosActivos } from '@/hooks/useModulosActivos';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -52,6 +53,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const { isModuloActivo } = useModulosActivos();
+
+  // Filter nav items based on active modules (external links always shown, configuracion/roles always shown)
+  const filteredNavItems = navItems.filter(item => {
+    if (item.external) return true;
+    // Always show configuracion and roles (needed to manage modules)
+    if (item.href === '/admin/configuracion' || item.href === '/admin/roles' || item.href === '/admin') return true;
+    return isModuloActivo(item.href);
+  });
 
   const handleSignOut = async () => {
     await signOut();
@@ -88,7 +98,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           {/* Navigation */}
           <ScrollArea className="flex-1">
             <nav className="p-4 space-y-1">
-              {navItems.map((item) => {
+              {filteredNavItems.map((item) => {
                 const isActive = location.pathname === item.href;
                 return (
                   <Link

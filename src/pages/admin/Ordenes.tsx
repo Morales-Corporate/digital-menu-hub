@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { format, differenceInMinutes, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
+import { useBusinessConfig } from '@/hooks/useBusinessConfig';
 import CrearPedidoModal from '@/components/admin/CrearPedidoModal';
 import EmitirComprobanteModal from '@/components/admin/EmitirComprobanteModal';
 
@@ -76,6 +77,8 @@ const STATE_CONFIG: Record<OrderState, { label: string; icon: React.ElementType;
 };
 
 export default function Ordenes() {
+  const { isEstadoVisible, estadosVisibles } = useBusinessConfig();
+  const visibleOrderStates = ORDER_STATES.filter(s => s === 'cancelado' || isEstadoVisible(s));
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -461,15 +464,14 @@ export default function Ordenes() {
     // Different flow for mesa orders vs delivery orders
     const isMesaOrder = order.numero_mesa !== null;
     
-    // Mesa: pendiente → confirmado → en_preparacion → listo → entregado (NO en_camino)
-    // Delivery: pendiente → confirmado → en_preparacion → listo → en_camino → entregado
-    const validStates: Exclude<OrderState, 'cancelado'>[] = isMesaOrder
-      ? ['pendiente', 'confirmado', 'en_preparacion', 'listo', 'entregado']
-      : ['pendiente', 'confirmado', 'en_preparacion', 'listo', 'en_camino', 'entregado'];
+    // Build valid states from visible states, excluding cancelado
+    const baseStates: Exclude<OrderState, 'cancelado'>[] = isMesaOrder
+      ? (['pendiente', 'confirmado', 'en_preparacion', 'listo', 'entregado'] as const).filter(s => isEstadoVisible(s)) as Exclude<OrderState, 'cancelado'>[]
+      : (['pendiente', 'confirmado', 'en_preparacion', 'listo', 'en_camino', 'entregado'] as const).filter(s => isEstadoVisible(s)) as Exclude<OrderState, 'cancelado'>[];
     
-    const currentIndex = validStates.indexOf(currentStatus as Exclude<OrderState, 'cancelado'>);
-    if (currentIndex === -1 || currentIndex >= validStates.length - 1) return null;
-    return validStates[currentIndex + 1];
+    const currentIndex = baseStates.indexOf(currentStatus as Exclude<OrderState, 'cancelado'>);
+    if (currentIndex === -1 || currentIndex >= baseStates.length - 1) return null;
+    return baseStates[currentIndex + 1];
   };
 
   const getNextStatusButton = (order: Order) => {
@@ -810,8 +812,8 @@ export default function Ordenes() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6">
-            {ORDER_STATES.map(state => {
+          <TabsList className={`grid w-full`} style={{ gridTemplateColumns: `repeat(${visibleOrderStates.length}, minmax(0, 1fr))` }}>
+            {visibleOrderStates.map(state => {
               const config = STATE_CONFIG[state];
               const count = visibleOrders.filter(o => o.estado === state).length;
               return (
@@ -828,7 +830,7 @@ export default function Ordenes() {
             })}
           </TabsList>
 
-          {ORDER_STATES.map(state => (
+          {visibleOrderStates.map(state => (
             <TabsContent key={state} value={state}>
               <Card>
                 <CardHeader>
