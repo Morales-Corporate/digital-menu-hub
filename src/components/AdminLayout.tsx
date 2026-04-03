@@ -98,7 +98,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           {/* Navigation */}
           <ScrollArea className="flex-1">
             <nav className="p-4 space-y-1">
-              {navItems.map((item) => {
+              {filteredNavItems.map((item) => {
                 const isActive = location.pathname === item.href;
                 return (
                   <Link
