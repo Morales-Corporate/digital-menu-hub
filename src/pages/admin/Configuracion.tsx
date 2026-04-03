@@ -360,6 +360,66 @@ export default function Configuracion() {
             </CardContent>
           </Card>
 
+          {/* Tipo de Negocio y Estados */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Store className="h-5 w-5" />
+                Tipo de Negocio
+              </CardTitle>
+              <CardDescription>
+                Configura el tipo de negocio para adaptar los estados de pedido
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label>Tipo de negocio</Label>
+                <Select value={formData.tipo_negocio || 'restaurante'} onValueChange={handleTipoNegocioChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cafeteria">Cafetería</SelectItem>
+                    <SelectItem value="restaurante">Restaurante</SelectItem>
+                    <SelectItem value="delivery">Delivery</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Al cambiar el tipo se preseleccionan los estados recomendados. Puedes personalizar abajo.
+                </p>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-3">
+                <Label>Estados de pedido visibles</Label>
+                <p className="text-sm text-muted-foreground">
+                  Marca los estados que se mostrarán en el sistema. Los pedidos existentes no se verán afectados.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {ALL_ESTADOS.map(estado => {
+                    const checked = (formData.estados_pedido_visibles || []).includes(estado.key);
+                    const isRequired = ['pendiente', 'entregado'].includes(estado.key);
+                    return (
+                      <div key={estado.key} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`estado-${estado.key}`}
+                          checked={checked}
+                          disabled={isRequired}
+                          onCheckedChange={() => toggleEstado(estado.key)}
+                        />
+                        <Label htmlFor={`estado-${estado.key}`} className="text-sm cursor-pointer">
+                          {estado.label}
+                          {isRequired && <span className="text-muted-foreground ml-1">(requerido)</span>}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Mensaje de Pie */}
           <Card>
             <CardHeader>
