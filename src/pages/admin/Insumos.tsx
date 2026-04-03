@@ -119,13 +119,13 @@ function InsumosTab() {
 
   const openCreate = () => {
     setEditingId(null);
-    setForm({ nombre: '', unidad_medida: 'g', costo_por_unidad: 0, stock_actual: 0, stock_minimo: 0 });
+    setForm({ nombre: '', unidad_medida: 'g', costo_por_unidad: 0, stock_actual: 0, stock_minimo: 0, stock_inicial_referencia: 0 });
     setDialogOpen(true);
   };
 
   const openEdit = (i: any) => {
     setEditingId(i.id);
-    setForm({ nombre: i.nombre, unidad_medida: i.unidad_medida, costo_por_unidad: Number(i.costo_por_unidad), stock_actual: Number(i.stock_actual), stock_minimo: Number(i.stock_minimo) });
+    setForm({ nombre: i.nombre, unidad_medida: i.unidad_medida, costo_por_unidad: Number(i.costo_por_unidad), stock_actual: Number(i.stock_actual), stock_minimo: Number(i.stock_minimo), stock_inicial_referencia: Number(i.stock_inicial_referencia || 0) });
     setDialogOpen(true);
   };
 
@@ -151,6 +151,10 @@ function InsumosTab() {
           {insumos.map((i: any) => {
             const status = getStockStatus(i);
             const unit = i.unidad_medida;
+            const stockRef = Number(i.stock_inicial_referencia || 0);
+            const pct = getStockPercentage(Number(i.stock_actual), stockRef);
+            const hasPct = pct >= 0;
+            const colorInfo = hasPct ? getStockColor(pct) : null;
             return (
               <Card key={i.id} className={status === 'agotado' ? 'border-destructive/50' : status === 'bajo' ? 'border-orange-400/50' : ''}>
                 <CardContent className="p-4">
@@ -171,9 +175,26 @@ function InsumosTab() {
                     </div>
                     <div>
                       <span className="text-muted-foreground">Stock:</span>
-                      <span className="ml-1 font-medium">{formatStock(Number(i.stock_actual), unit)}</span>
+                      <span className="ml-1 font-medium">
+                        {formatStock(Number(i.stock_actual), unit)}
+                        {hasPct && <span className={`ml-1 ${colorInfo!.text}`}>({pct.toFixed(0)}%)</span>}
+                      </span>
                     </div>
                   </div>
+                  {hasPct && (
+                    <div className="mt-2 space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className={`font-medium ${colorInfo!.text}`}>{colorInfo!.label}</span>
+                        <span className="text-muted-foreground">Ref: {formatStock(stockRef, unit)}</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${colorInfo!.bg}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                   <div className="text-sm mt-1">
                     <span className="text-muted-foreground">Stock mínimo:</span>
                     <span className="ml-1">{formatStock(Number(i.stock_minimo), unit)}</span>
@@ -214,6 +235,11 @@ function InsumosTab() {
                 <Input type="number" step="0.01" value={form.stock_minimo} onChange={e => setForm(f => ({ ...f, stock_minimo: parseFloat(e.target.value) || 0 }))} />
                 <p className="text-xs text-muted-foreground mt-1">Alerta cuando baje de este valor</p>
               </div>
+            </div>
+            <div>
+              <Label>Stock de referencia (100%) ({getUnitAbbr(form.unidad_medida)})</Label>
+              <Input type="number" step="0.01" value={form.stock_inicial_referencia} onChange={e => setForm(f => ({ ...f, stock_inicial_referencia: parseFloat(e.target.value) || 0 }))} />
+              <p className="text-xs text-muted-foreground mt-1">Valor que representa el 100% del stock para el indicador visual. Déjalo en 0 para no mostrar porcentaje.</p>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
