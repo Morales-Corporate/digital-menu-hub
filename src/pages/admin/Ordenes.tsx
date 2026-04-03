@@ -812,8 +812,8 @@ export default function Ordenes() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-6">
-            {ORDER_STATES.map(state => {
+          <TabsList className={`grid w-full`} style={{ gridTemplateColumns: `repeat(${visibleOrderStates.length}, minmax(0, 1fr))` }}>
+            {visibleOrderStates.map(state => {
               const config = STATE_CONFIG[state];
               const count = visibleOrders.filter(o => o.estado === state).length;
               return (
