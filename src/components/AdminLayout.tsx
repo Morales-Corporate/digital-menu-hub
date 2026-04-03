@@ -56,8 +56,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const { isModuloActivo, isLoading } = useModulosActivos();
 
   const filteredNavItems = navItems.filter((item) => {
-    if (item.external) return true;
-    if (isLoading) return false;
+    if (isLoading && !item.external) return false;
+    if (item.external && !item.controllable) return true;
     return isModuloActivo(item.href);
   });
 
