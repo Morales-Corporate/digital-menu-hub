@@ -538,6 +538,12 @@ export default function Roles() {
             </div>
           </DialogContent>
         </Dialog>
+          </TabsContent>
+
+          <TabsContent value="roles">
+            <RolesCustomManager />
+          </TabsContent>
+        </Tabs>
       </div>
     </AdminLayout>
   );
