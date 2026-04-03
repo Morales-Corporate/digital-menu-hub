@@ -1,0 +1,1 @@
+ALTER TABLE public.insumos ADD COLUMN stock_inicial_referencia numeric DEFAULT 0;
