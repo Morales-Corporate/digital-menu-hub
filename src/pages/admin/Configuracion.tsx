@@ -45,7 +45,9 @@ export default function Configuracion() {
     numero_boleta: 1,
     serie_factura: 'F001',
     numero_factura: 1,
-    mensaje_pie: 'Gracias por su preferencia'
+    mensaje_pie: 'Gracias por su preferencia',
+    tipo_negocio: 'restaurante',
+    estados_pedido_visibles: ['pendiente', 'confirmado', 'en_preparacion', 'listo', 'entregado', 'pagado'],
   });
 
   const { data: config, isLoading } = useQuery({
