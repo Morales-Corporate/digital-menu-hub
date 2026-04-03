@@ -505,6 +505,7 @@ export type Database = {
           id: string
           nombre: string
           stock_actual: number
+          stock_inicial_referencia: number | null
           stock_minimo: number
           unidad_medida: string
           updated_at: string | null
@@ -515,6 +516,7 @@ export type Database = {
           id?: string
           nombre: string
           stock_actual?: number
+          stock_inicial_referencia?: number | null
           stock_minimo?: number
           unidad_medida?: string
           updated_at?: string | null
@@ -525,6 +527,7 @@ export type Database = {
           id?: string
           nombre?: string
           stock_actual?: number
+          stock_inicial_referencia?: number | null
           stock_minimo?: number
           unidad_medida?: string
           updated_at?: string | null
