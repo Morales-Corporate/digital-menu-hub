@@ -44,8 +44,8 @@ const navItems = [
   { href: '/admin/recompensas', label: 'Recompensas', icon: Gift },
   { href: '/admin/roles', label: 'Usuarios / Roles', icon: ShieldCheck },
   { href: '/admin/configuracion', label: 'Configuración', icon: Settings },
-  { href: '/', label: 'Ver Menú', icon: Eye, external: true },
-  { href: '/mesero', label: 'Modo Mesero', icon: Users, external: true },
+  { href: '/', label: 'Ver Menú', icon: Eye, external: true, controllable: true },
+  { href: '/mesero', label: 'Modo Mesero', icon: Users, external: true, controllable: true },
 ];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
@@ -56,8 +56,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const { isModuloActivo, isLoading } = useModulosActivos();
 
   const filteredNavItems = navItems.filter((item) => {
-    if (item.external) return true;
-    if (isLoading) return false;
+    if (isLoading && !item.external) return false;
+    if (item.external && !item.controllable) return true;
     return isModuloActivo(item.href);
   });
 
