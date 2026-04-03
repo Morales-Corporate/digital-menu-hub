@@ -44,8 +44,8 @@ const navItems = [
   { href: '/admin/recompensas', label: 'Recompensas', icon: Gift },
   { href: '/admin/roles', label: 'Usuarios / Roles', icon: ShieldCheck },
   { href: '/admin/configuracion', label: 'Configuración', icon: Settings },
-  { href: '/', label: 'Ver Menú', icon: Eye, external: true },
-  { href: '/mesero', label: 'Modo Mesero', icon: Users, external: true },
+  { href: '/', label: 'Ver Menú', icon: Eye, external: true, controllable: true },
+  { href: '/mesero', label: 'Modo Mesero', icon: Users, external: true, controllable: true },
 ];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
