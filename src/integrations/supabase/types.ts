@@ -368,6 +368,7 @@ export type Database = {
           created_at: string | null
           direccion: string | null
           email: string | null
+          estados_pedido_visibles: string[]
           id: string
           logo_url: string | null
           mensaje_pie: string | null
@@ -379,12 +380,14 @@ export type Database = {
           serie_boleta: string | null
           serie_factura: string | null
           telefono: string | null
+          tipo_negocio: string
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           direccion?: string | null
           email?: string | null
+          estados_pedido_visibles?: string[]
           id?: string
           logo_url?: string | null
           mensaje_pie?: string | null
@@ -396,12 +399,14 @@ export type Database = {
           serie_boleta?: string | null
           serie_factura?: string | null
           telefono?: string | null
+          tipo_negocio?: string
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           direccion?: string | null
           email?: string | null
+          estados_pedido_visibles?: string[]
           id?: string
           logo_url?: string | null
           mensaje_pie?: string | null
@@ -413,6 +418,7 @@ export type Database = {
           serie_boleta?: string | null
           serie_factura?: string | null
           telefono?: string | null
+          tipo_negocio?: string
           updated_at?: string | null
         }
         Relationships: []
