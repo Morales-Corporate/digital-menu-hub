@@ -248,7 +248,7 @@ export default function InsumosTab() {
                       </h3>
                       <p className="text-[11px] text-muted-foreground mt-0.5">{getUnitLabel(unit)}</p>
                     </div>
-                    <div className="flex opacity-0 group-hover:opacity-100 transition-opacity shrink-0 -mr-1">
+                    <div className="flex opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0 -mr-1">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(i)}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
