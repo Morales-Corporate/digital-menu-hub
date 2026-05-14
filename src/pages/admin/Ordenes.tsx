@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLayout from '@/components/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import OrderCard, { getOrderTipo, tipoConfig, OrderTipo } from '@/components/admin/OrderCard';
+import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
@@ -80,6 +80,7 @@ export default function Ordenes() {
   const { isEstadoVisible, estadosVisibles } = useBusinessConfig();
   const visibleOrderStates = ORDER_STATES.filter(s => s === 'cancelado' || isEstadoVisible(s));
   const [orders, setOrders] = useState<Order[]>([]);
+  const [tipoFilter, setTipoFilter] = useState<'todos' | OrderTipo>('todos');
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
@@ -509,357 +510,298 @@ export default function Ordenes() {
     return new Date(order.created_at) >= new Date(cajaAbiertaAdmin.fecha_apertura);
   });
 
-  const filteredOrders = visibleOrders.filter((order) => order.estado === activeTab);
-
-  const OrderTable = ({ orders }: { orders: Order[] }) => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Orden</TableHead>
-          <TableHead>Cliente</TableHead>
-          <TableHead>Mesero</TableHead>
-          <TableHead>Fecha/Hora</TableHead>
-          <TableHead>Pago</TableHead>
-          <TableHead>Total</TableHead>
-          <TableHead>Estado</TableHead>
-          <TableHead className="text-right">Acciones</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {orders.map((order) => {
-          const paymentInfo = getPaymentMethodDisplay(order.metodo_pago);
-          const PaymentIcon = paymentInfo.icon;
-          const waitFlag = getWaitTimeFlag(order);
-          
-          return (
-            <TableRow key={order.id} className={waitFlag ? 'bg-orange-50' : ''}>
-              <TableCell className="font-mono text-sm">
-                <div className="flex items-center gap-2">
-                  {order.id.slice(0, 8)}
-                  {waitFlag}
-                </div>
-              </TableCell>
-              <TableCell>
-                <div>
-                  {order.es_invitado ? (
-                    <>
-                      <div className="flex items-center gap-1">
-                        <p className="font-medium">{order.nombre_invitado || 'Invitado'}</p>
-                        <Badge variant="secondary" className="text-xs">Mesa {order.numero_mesa}</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{order.telefono_invitado || 'Sin teléfono'}</p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-medium">{order.profiles?.full_name || 'Sin nombre'}</p>
-                      <p className="text-xs text-muted-foreground">{order.profiles?.telefono}</p>
-                    </>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>
-                {(() => {
-                  const meseroAsignado = getMeseroName(order.mesero_id);
-                  const meseroMesa = order.numero_mesa ? getMeseroForMesa(order.numero_mesa) : null;
-                  const displayMesero = meseroAsignado || meseroMesa?.nombre;
-                  const isAutoAssigned = !order.mesero_id && meseroMesa;
-                  
-                  if (displayMesero) {
-                    return (
-                      <div className="flex items-center gap-1">
-                        <Users className="h-3 w-3 text-primary" />
-                        <span className="text-sm">{displayMesero}</span>
-                        {isAutoAssigned && (
-                          <Badge variant="outline" className="text-[10px] px-1 py-0">Auto</Badge>
-                        )}
-                      </div>
-                    );
-                  }
-                  
-                  if (order.estado !== 'entregado' && order.estado !== 'cancelado' && meseros.length > 0) {
-                    return (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => openMeseroDialog(order.id, null)}
-                      >
-                        <Users className="h-3 w-3 mr-1" />
-                        Asignar
-                      </Button>
-                    );
-                  }
-                  
-                  return <span className="text-xs text-muted-foreground">-</span>;
-                })()}
-              </TableCell>
-              <TableCell>
-                <div>
-                  <p>{format(new Date(order.created_at), 'dd/MM/yyyy', { locale: es })}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(order.created_at), 'HH:mm', { locale: es })}
-                  </p>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
-                  <PaymentIcon className={`h-4 w-4 ${paymentInfo.color}`} />
-                  <span className="text-sm">{paymentInfo.label}</span>
-                </div>
-              </TableCell>
-              <TableCell className="font-medium">S/ {order.total.toFixed(2)}</TableCell>
-              <TableCell>{getStatusBadge(order.estado)}</TableCell>
-              <TableCell className="text-right">
-                <div className="flex gap-2 justify-end flex-wrap">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle>Detalle del Pedido</DialogTitle>
-                      </DialogHeader>
-                      {selectedOrder && (
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div className="col-span-2 bg-secondary/50 p-3 rounded-lg">
-                              <div className="flex items-center gap-2 mb-2">
-                                <User className="h-4 w-4 text-primary" />
-                                <span className="font-medium">Datos del Cliente</span>
-                              </div>
-                              <p className="font-semibold text-lg">{selectedOrder.profiles?.full_name || 'Sin nombre'}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground flex items-center gap-1">
-                                <Phone className="h-3 w-3" /> Teléfono
-                              </p>
-                              <p className="font-medium">{selectedOrder.profiles?.telefono || '-'}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">Método de pago</p>
-                              <div className="flex items-center gap-2 font-medium">
-                                {selectedOrder.metodo_pago === 'yape_plin' && <QrCode className="h-4 w-4 text-primary" />}
-                                {selectedOrder.metodo_pago === 'efectivo' && <Banknote className="h-4 w-4 text-green-600" />}
-                                {selectedOrder.metodo_pago === 'tarjeta' && <CreditCard className="h-4 w-4 text-blue-600" />}
-                                {selectedOrder.metodo_pago === 'yape_plin' ? 'Yape/Plin' : 
-                                 selectedOrder.metodo_pago === 'efectivo' ? 'Efectivo' : 
-                                 selectedOrder.metodo_pago === 'tarjeta' ? 'Tarjeta (POS)' : selectedOrder.metodo_pago}
-                              </div>
-                            </div>
-                            {selectedOrder.metodo_pago === 'efectivo' && selectedOrder.monto_pago && (
-                              <div className="col-span-2 bg-green-50 p-3 rounded-lg border border-green-200">
-                                <div className="flex justify-between items-center">
-                                  <div>
-                                    <p className="text-muted-foreground text-xs">Cliente paga con</p>
-                                    <p className="font-bold text-lg">S/ {selectedOrder.monto_pago.toFixed(2)}</p>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-muted-foreground text-xs">Vuelto a llevar</p>
-                                    <p className="text-green-600 font-bold text-lg">
-                                      S/ {(selectedOrder.monto_pago - selectedOrder.total).toFixed(2)}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                            <div className="col-span-2">
-                              <p className="text-muted-foreground flex items-center gap-1">
-                                <MapPin className="h-3 w-3" /> Dirección de entrega
-                              </p>
-                              <p className="font-medium">{selectedOrder.profiles?.direccion || 'Sin dirección'}</p>
-                              {selectedOrder.profiles?.referencia_direccion && (
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  Ref: {selectedOrder.profiles.referencia_direccion}
-                                </p>
-                              )}
-                            </div>
-                            <div className="col-span-2">
-                              <p className="text-muted-foreground">Estado</p>
-                              {getStatusBadge(selectedOrder.estado)}
-                            </div>
-                            {selectedOrder.estado === 'cancelado' && selectedOrder.motivo_cancelacion && (
-                              <div className="col-span-2 bg-red-50 p-3 rounded-lg border border-red-200">
-                                <p className="text-sm text-red-800 font-medium">Motivo de cancelación:</p>
-                                <p className="text-sm text-red-700">{selectedOrder.motivo_cancelacion}</p>
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground mb-2">Productos</p>
-                            <div className="space-y-2">
-                              {selectedOrder.orden_items.map(item => (
-                                <div key={item.id} className="flex justify-between py-2 border-b">
-                                  <span>{item.productos?.nombre || 'Producto eliminado'} x{item.cantidad}</span>
-                                  <span>S/ {(item.precio_unitario * item.cantidad).toFixed(2)}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="flex justify-between font-bold text-lg">
-                            <span>Total:</span>
-                            <span>S/ {selectedOrder.total.toFixed(2)}</span>
-                          </div>
-                          {selectedOrder.comprobante_pago && (selectedOrder.estado === 'pendiente' || selectedOrder.estado === 'confirmado') && (
-                            <Button 
-                              variant="outline" 
-                              className="w-full mt-4"
-                              onClick={() => handleViewReceipt(selectedOrder.comprobante_pago!)}
-                            >
-                              <ImageIcon className="h-4 w-4 mr-2" />
-                              Ver Comprobante de Pago
-                            </Button>
-                          )}
-                        </div>
-                      )}
-                    </DialogContent>
-                  </Dialog>
-                  {order.comprobante_pago && (order.estado === 'pendiente' || order.estado === 'confirmado') && (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleViewReceipt(order.comprobante_pago!)}
-                    >
-                      <ImageIcon className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {order.estado === 'entregado' && (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setOrdenParaComprobante(order);
-                        setShowComprobanteModal(true);
-                      }}
-                    >
-                      <FileText className="h-4 w-4 mr-1" />
-                      Boleta/Factura
-                    </Button>
-                  )}
-                  {order.estado !== 'entregado' && order.estado !== 'cancelado' && (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                      onClick={() => openCancelDialog(order.id)}
-                    >
-                      <XCircle className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {getNextStatusButton(order)}
-                </div>
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
-  );
-
-  // Calculate today's summary from visibleOrders
-  const todaySales = visibleOrders
-    .filter(o => o.estado === 'entregado')
-    .reduce((sum, o) => sum + o.total, 0);
+  // KPIs
+  const todaySales = visibleOrders.filter(o => o.estado === 'entregado').reduce((s, o) => s + o.total, 0);
   const todayEntregados = visibleOrders.filter(o => o.estado === 'entregado').length;
-  const todayPendientes = visibleOrders.filter(o => o.estado === 'pendiente').length;
+  const todayActivos = visibleOrders.filter(o => !['entregado', 'cancelado'].includes(o.estado)).length;
+  const tiemposEntrega = visibleOrders
+    .filter(o => o.estado === 'entregado' && o.entregado_at)
+    .map(o => differenceInMinutes(parseISO(o.entregado_at!), parseISO(o.created_at)));
+  const tiempoPromedio = tiemposEntrega.length
+    ? Math.round(tiemposEntrega.reduce((s, m) => s + m, 0) / tiemposEntrega.length)
+    : 0;
+
+  void activeTab; void setActiveTab;
+
+  // Filter by tipo
+  const ordersByTipo = visibleOrders.filter(o => tipoFilter === 'todos' || getOrderTipo(o) === tipoFilter);
+
+  // Kanban columns (excluyen cancelado)
+  const KANBAN_STATES = visibleOrderStates.filter(s => s !== 'cancelado');
+
+  const COLUMN_TINT: Record<string, string> = {
+    pendiente:      'border-amber-200 bg-amber-50/40',
+    confirmado:     'border-blue-200 bg-blue-50/40',
+    en_preparacion: 'border-orange-200 bg-orange-50/40',
+    listo:          'border-teal-200 bg-teal-50/40',
+    en_camino:      'border-purple-200 bg-purple-50/40',
+    entregado:      'border-emerald-200 bg-emerald-50/40',
+  };
+
+  const tipoFilters: Array<{ key: 'todos' | OrderTipo; label: string }> = [
+    { key: 'todos',    label: 'Todos' },
+    { key: 'salon',    label: tipoConfig.salon.label },
+    { key: 'delivery', label: tipoConfig.delivery.label },
+    { key: 'takeaway', label: tipoConfig.takeaway.label },
+  ];
+
+  const renderAdvanceMeta = (state: OrderState) => {
+    const cfg = STATE_CONFIG[state];
+    return { Icon: cfg.icon, label: cfg.label };
+  };
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        {/* Header con resumen del día */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">Gestión de Pedidos</h1>
-            <p className="text-muted-foreground text-sm mt-1">
+      <div className="space-y-4">
+        {/* HEADER */}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight">Gestión de Pedidos</h1>
+            <p className="text-muted-foreground text-sm mt-0.5 capitalize">
               {format(new Date(), "EEEE, d 'de' MMMM yyyy", { locale: es })}
             </p>
           </div>
-          
-          {/* Mini resumen inline */}
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-            <div className="flex items-center gap-2 bg-primary/10 px-3 py-2 rounded-lg">
+
+          {/* KPIs + actions */}
+          <div className="flex flex-wrap items-stretch gap-2">
+            <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 min-w-[110px]">
               <DollarSign className="h-4 w-4 text-primary" />
               <div>
-                <p className="text-[10px] text-muted-foreground leading-none">Ventas Hoy</p>
+                <p className="text-[10px] text-muted-foreground leading-none uppercase tracking-wide">Ventas hoy</p>
                 <p className="text-sm font-bold">S/ {todaySales.toFixed(2)}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-green-100 px-3 py-2 rounded-lg">
-              <Package className="h-4 w-4 text-green-600" />
+            <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2">
+              <UtensilsCrossed className="h-4 w-4 text-orange-600" />
               <div>
-                <p className="text-[10px] text-muted-foreground leading-none">Entregados</p>
+                <p className="text-[10px] text-muted-foreground leading-none uppercase tracking-wide">Activos</p>
+                <p className="text-sm font-bold">{todayActivos}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2">
+              <Package className="h-4 w-4 text-emerald-600" />
+              <div>
+                <p className="text-[10px] text-muted-foreground leading-none uppercase tracking-wide">Entregados</p>
                 <p className="text-sm font-bold">{todayEntregados}</p>
               </div>
             </div>
-            {todayPendientes > 0 && (
-              <div className="flex items-center gap-2 bg-amber-100 px-3 py-2 rounded-lg animate-pulse">
-                <Clock className="h-4 w-4 text-amber-600" />
-                <div>
-                  <p className="text-[10px] text-muted-foreground leading-none">Pendientes</p>
-                  <p className="text-sm font-bold text-amber-800">{todayPendientes}</p>
-                </div>
+            <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2">
+              <Clock className="h-4 w-4 text-blue-600" />
+              <div>
+                <p className="text-[10px] text-muted-foreground leading-none uppercase tracking-wide">T. promedio</p>
+                <p className="text-sm font-bold">{tiempoPromedio}m</p>
               </div>
-            )}
-            <Button variant="outline" size="sm" onClick={fetchOrders} disabled={loading}>
+            </div>
+            <Button variant="outline" size="icon" className="h-[52px] w-10" onClick={fetchOrders} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
-            <Button size="sm" onClick={() => setCrearPedidoOpen(true)}>
+            <Button className="h-[52px]" onClick={() => setCrearPedidoOpen(true)}>
               <Plus className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Crear Pedido</span>
+              Nuevo Pedido
             </Button>
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className={`grid w-full`} style={{ gridTemplateColumns: `repeat(${visibleOrderStates.length}, minmax(0, 1fr))` }}>
-            {visibleOrderStates.map(state => {
-              const config = STATE_CONFIG[state];
-              const count = visibleOrders.filter(o => o.estado === state).length;
+        {/* FILTROS por tipo */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {tipoFilters.map(f => {
+            const count = f.key === 'todos'
+              ? visibleOrders.length
+              : visibleOrders.filter(o => getOrderTipo(o) === f.key).length;
+            const active = tipoFilter === f.key;
+            return (
+              <button
+                key={f.key}
+                onClick={() => setTipoFilter(f.key)}
+                className={cn(
+                  'inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium transition-colors',
+                  active
+                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                    : 'bg-card text-muted-foreground hover:bg-secondary border-border'
+                )}
+              >
+                {f.label}
+                <span className={cn(
+                  'inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold',
+                  active ? 'bg-primary-foreground/20' : 'bg-muted'
+                )}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* KANBAN */}
+        {loading ? (
+          <p className="text-center py-16 text-muted-foreground">Cargando pedidos...</p>
+        ) : (
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {KANBAN_STATES.map(state => {
+              const cfg = STATE_CONFIG[state];
+              const Icon = cfg.icon;
+              const colItems = ordersByTipo
+                .filter(o => o.estado === state)
+                .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+              const next = state !== 'entregado' ? null : null;
+
               return (
-                <TabsTrigger key={state} value={state} className="relative text-xs sm:text-sm">
-                  <span className="hidden sm:inline">{config.label}</span>
-                  <span className="sm:hidden">{config.label.slice(0, 4)}</span>
-                  {count > 0 && (
-                    <span className={`ml-1 sm:ml-2 text-xs px-1 sm:px-1.5 py-0.5 rounded-full ${config.bgColor} ${config.color}`}>
-                      {count}
-                    </span>
+                <div
+                  key={state}
+                  className={cn(
+                    'flex flex-col rounded-xl border-2 border-dashed min-h-[60vh] max-h-[calc(100vh-260px)]',
+                    COLUMN_TINT[state] ?? 'border-border bg-muted/20'
                   )}
-                </TabsTrigger>
+                >
+                  {/* Column header */}
+                  <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-b bg-background/60 rounded-t-xl">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Icon className={cn('h-4 w-4', cfg.color)} />
+                      <h3 className="font-semibold text-sm truncate">{cfg.label}</h3>
+                    </div>
+                    <Badge variant="secondary" className="h-5 px-2 text-[11px] font-bold">
+                      {colItems.length}
+                    </Badge>
+                  </div>
+
+                  {/* Column body */}
+                  <ScrollArea className="flex-1">
+                    <div className="p-2 space-y-2">
+                      {colItems.length === 0 ? (
+                        <p className="text-center text-xs text-muted-foreground py-8">Sin pedidos</p>
+                      ) : (
+                        colItems.map(order => {
+                          const meseroAsignado = getMeseroName(order.mesero_id);
+                          const meseroMesa = order.numero_mesa ? getMeseroForMesa(order.numero_mesa) : null;
+                          const displayMesero = meseroAsignado || meseroMesa?.nombre || null;
+                          const isAuto = !order.mesero_id && !!meseroMesa;
+                          const nextStatus = getNextStatus(order.estado, order);
+                          const nextMeta = nextStatus ? renderAdvanceMeta(nextStatus as OrderState) : null;
+
+                          return (
+                            <OrderCard
+                              key={order.id}
+                              order={order}
+                              meseroName={displayMesero}
+                              isAutoMesero={isAuto}
+                              onView={() => setSelectedOrder(order)}
+                              onAdvance={nextStatus ? () => handleUpdateStatus(order.id, nextStatus) : undefined}
+                              advanceLabel={nextMeta?.label}
+                              AdvanceIcon={nextMeta?.Icon}
+                              onCancel={
+                                !['entregado', 'cancelado'].includes(order.estado)
+                                  ? () => openCancelDialog(order.id)
+                                  : undefined
+                              }
+                              onComprobante={
+                                order.estado === 'entregado'
+                                  ? () => { setOrdenParaComprobante(order); setShowComprobanteModal(true); }
+                                  : undefined
+                              }
+                              onViewReceipt={
+                                order.comprobante_pago && ['pendiente', 'confirmado'].includes(order.estado)
+                                  ? () => handleViewReceipt(order.comprobante_pago!)
+                                  : undefined
+                              }
+                            />
+                          );
+                        })
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
               );
             })}
-          </TabsList>
+          </div>
+        )}
 
-          {visibleOrderStates.map(state => (
-            <TabsContent key={state} value={state}>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    {(() => {
-                      const config = STATE_CONFIG[state];
-                      const Icon = config.icon;
-                      return <Icon className={`h-5 w-5 ${config.color}`} />;
-                    })()}
-                    Pedidos {STATE_CONFIG[state].label}s
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
-                    <p className="text-center py-8 text-muted-foreground">Cargando pedidos...</p>
-                  ) : filteredOrders.length === 0 ? (
-                    <p className="text-center py-8 text-muted-foreground">
-                      No hay pedidos {STATE_CONFIG[state].label.toLowerCase()}s
+        {/* Detalle del pedido */}
+        <Dialog open={!!selectedOrder} onOpenChange={(o) => !o && setSelectedOrder(null)}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Detalle del Pedido</DialogTitle>
+            </DialogHeader>
+            {selectedOrder && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-mono font-bold text-lg">#{selectedOrder.id.slice(0, 8).toUpperCase()}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {format(parseISO(selectedOrder.created_at), "d MMM yyyy · HH:mm", { locale: es })}
                     </p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <OrderTable orders={filteredOrders} />
+                  </div>
+                  {getStatusBadge(selectedOrder.estado)}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="col-span-2 bg-secondary/40 p-3 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Cliente</p>
+                    <p className="font-semibold">
+                      {selectedOrder.es_invitado
+                        ? (selectedOrder.nombre_invitado || 'Invitado')
+                        : (selectedOrder.profiles?.full_name || 'Sin nombre')}
+                    </p>
+                    {selectedOrder.numero_mesa && (
+                      <p className="text-xs text-muted-foreground mt-1">Mesa {selectedOrder.numero_mesa}</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs flex items-center gap-1">
+                      <Phone className="h-3 w-3" /> Teléfono
+                    </p>
+                    <p className="font-medium">
+                      {selectedOrder.profiles?.telefono || selectedOrder.telefono_invitado || '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Pago</p>
+                    <p className="font-medium">{getPaymentMethodDisplay(selectedOrder.metodo_pago).label}</p>
+                  </div>
+                  {selectedOrder.profiles?.direccion && (
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground text-xs flex items-center gap-1">
+                        <MapPin className="h-3 w-3" /> Dirección
+                      </p>
+                      <p className="font-medium">{selectedOrder.profiles.direccion}</p>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          ))}
-        </Tabs>
+                  {selectedOrder.estado === 'cancelado' && selectedOrder.motivo_cancelacion && (
+                    <div className="col-span-2 bg-destructive/10 p-3 rounded-lg border border-destructive/30">
+                      <p className="text-xs text-destructive font-medium">Motivo de cancelación</p>
+                      <p className="text-sm">{selectedOrder.motivo_cancelacion}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Productos</p>
+                  <div className="space-y-1.5">
+                    {selectedOrder.orden_items.map(item => (
+                      <div key={item.id} className="flex justify-between py-1.5 border-b text-sm">
+                        <span>{item.productos?.nombre || 'Producto eliminado'} × {item.cantidad}</span>
+                        <span className="font-medium">S/ {(item.precio_unitario * item.cantidad).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                  <span>Total</span>
+                  <span>S/ {selectedOrder.total.toFixed(2)}</span>
+                </div>
+                {selectedOrder.comprobante_pago && ['pendiente', 'confirmado'].includes(selectedOrder.estado) && (
+                  <Button variant="outline" className="w-full" onClick={() => handleViewReceipt(selectedOrder.comprobante_pago!)}>
+                    <ImageIcon className="h-4 w-4 mr-2" /> Ver Comprobante de Pago
+                  </Button>
+                )}
+                {selectedOrder.numero_mesa && meseros.length > 0 && !['entregado', 'cancelado'].includes(selectedOrder.estado) && (
+                  <Button variant="outline" className="w-full" onClick={() => openMeseroDialog(selectedOrder.id, selectedOrder.mesero_id)}>
+                    <Users className="h-4 w-4 mr-2" /> Asignar Mesero
+                  </Button>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Receipt viewer dialog */}
         <Dialog open={showReceipt} onOpenChange={setShowReceipt}>
