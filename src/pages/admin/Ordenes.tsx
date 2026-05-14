@@ -80,6 +80,7 @@ export default function Ordenes() {
   const { isEstadoVisible, estadosVisibles } = useBusinessConfig();
   const visibleOrderStates = ORDER_STATES.filter(s => s === 'cancelado' || isEstadoVisible(s));
   const [orders, setOrders] = useState<Order[]>([]);
+  const [tipoFilter, setTipoFilter] = useState<'todos' | OrderTipo>('todos');
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
