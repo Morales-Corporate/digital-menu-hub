@@ -523,8 +523,6 @@ export default function Ordenes() {
 
   void activeTab; void setActiveTab;
 
-  return (
-
   // Filter by tipo
   const ordersByTipo = visibleOrders.filter(o => tipoFilter === 'todos' || getOrderTipo(o) === tipoFilter);
 
