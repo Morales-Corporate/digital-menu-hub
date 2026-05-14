@@ -14,6 +14,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Loader2, Package, AlertTriangle, ShoppingCart, BookOpen, Bell, Check, Search, SlidersHorizontal } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import InsumosTab from '@/components/admin/InsumosTab';
 
 // ========== UNIT SYSTEM ==========
 const UNIDADES_BASE = [
