@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Loader2, Package, AlertTriangle, ShoppingCart, BookOpen, Bell, Check } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Package, AlertTriangle, ShoppingCart, BookOpen, Bell, Check, Search, SlidersHorizontal } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 
 // ========== UNIT SYSTEM ==========
