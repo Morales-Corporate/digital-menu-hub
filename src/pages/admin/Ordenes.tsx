@@ -510,18 +510,6 @@ export default function Ordenes() {
     return new Date(order.created_at) >= new Date(cajaAbiertaAdmin.fecha_apertura);
   });
 
-  const filteredOrders = visibleOrders.filter((order) => order.estado === activeTab);
-
-  // (table view replaced by Kanban + OrderCard)
-
-  // Calculate today's summary from visibleOrders
-  const todaySales = visibleOrders
-    .filter(o => o.estado === 'entregado')
-    .reduce((sum, o) => sum + o.total, 0);
-  const todayEntregados = visibleOrders.filter(o => o.estado === 'entregado').length;
-  const todayPendientes = visibleOrders.filter(o => o.estado === 'pendiente').length;
-
-  return (
   // KPIs
   const todaySales = visibleOrders.filter(o => o.estado === 'entregado').reduce((s, o) => s + o.total, 0);
   const todayEntregados = visibleOrders.filter(o => o.estado === 'entregado').length;
@@ -532,6 +520,10 @@ export default function Ordenes() {
   const tiempoPromedio = tiemposEntrega.length
     ? Math.round(tiemposEntrega.reduce((s, m) => s + m, 0) / tiemposEntrega.length)
     : 0;
+
+  void activeTab; void setActiveTab;
+
+  return (
 
   // Filter by tipo
   const ordersByTipo = visibleOrders.filter(o => tipoFilter === 'todos' || getOrderTipo(o) === tipoFilter);
