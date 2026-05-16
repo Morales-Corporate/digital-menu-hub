@@ -130,11 +130,19 @@ function ComprasTab() {
       }]);
       if (compraError) throw compraError;
 
-      // Update insumo stock
-      const newStock = Number(selectedInsumo.stock_actual) + cantidadEnBase;
+      // Weighted average cost: ((stock_actual * costo_actual) + (cantidad_nueva * costo_nuevo)) / (stock_total)
+      const stockActual = Number(selectedInsumo.stock_actual) || 0;
+      const costoActual = Number(selectedInsumo.costo_por_unidad) || 0;
+      const newStock = stockActual + cantidadEnBase;
+      const valorInventarioAnterior = stockActual * costoActual;
+      const valorCompraNueva = cantidadEnBase * costoPorBase;
+      const nuevoCostoPromedio = newStock > 0
+        ? (valorInventarioAnterior + valorCompraNueva) / newStock
+        : costoPorBase;
+
       const { error: updateError } = await supabase.from('insumos').update({
         stock_actual: newStock,
-        costo_por_unidad: costoPorBase,
+        costo_por_unidad: nuevoCostoPromedio,
       }).eq('id', form.insumo_id);
       if (updateError) throw updateError;
     },
