@@ -131,6 +131,21 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   </Link>
                 );
               })}
+              {isSuperAdmin && (
+                <Link
+                  to="/super-admin"
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors mt-4 border border-sidebar-border/50",
+                    location.pathname === '/super-admin'
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent"
+                  )}
+                >
+                  <ShieldCheck className="h-5 w-5" />
+                  <span className="flex-1">Super Admin</span>
+                </Link>
+              )}
             </nav>
           </ScrollArea>
 
@@ -161,6 +176,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Main content */}
       <main className="lg:pl-64 pt-16 lg:pt-0 min-h-screen">
+        <SubscriptionBanner />
         <div className="p-6 lg:p-8">
           {children}
         </div>
