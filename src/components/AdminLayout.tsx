@@ -2,15 +2,19 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useModulosActivos } from '@/hooks/useModulosActivos';
+import { useCurrentBusiness } from '@/hooks/useCurrentBusiness';
+import { useSuperAdmin } from '@/hooks/useSuperAdmin';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  LayoutGrid, 
-  UtensilsCrossed, 
-  Eye, 
-  LogOut, 
-  Menu, 
+import SubscriptionBanner from '@/components/SubscriptionBanner';
+import {
+  LayoutGrid,
+  UtensilsCrossed,
+  Eye,
+  LogOut,
+  Menu,
   X,
   ChevronRight,
   ClipboardList,
@@ -22,7 +26,8 @@ import {
   Settings,
   ShieldCheck,
   Package,
-  TrendingUp
+  TrendingUp,
+  Sparkles
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -54,6 +59,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { isModuloActivo, isLoading } = useModulosActivos();
+  const { business, isTrial, trialDaysLeft } = useCurrentBusiness();
+  const { isSuperAdmin } = useSuperAdmin();
 
   const filteredNavItems = navItems.filter((item) => {
     if (isLoading && !item.external) return false;
@@ -87,10 +94,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex flex-col h-full pt-16 lg:pt-0">
-          {/* Logo */}
-          <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
-            <UtensilsCrossed className="h-8 w-8 text-sidebar-primary mr-3" />
-            <span className="font-display text-xl text-sidebar-foreground">Menú Digital</span>
+          {/* Logo + business */}
+          <div className="h-auto py-4 flex flex-col items-start px-6 border-b border-sidebar-border gap-2">
+            <div className="flex items-center w-full">
+              <UtensilsCrossed className="h-8 w-8 text-sidebar-primary mr-3" />
+              <span className="font-display text-xl text-sidebar-foreground truncate">{business?.name ?? 'Menú Digital'}</span>
+            </div>
+            {isTrial && trialDaysLeft !== null && (
+              <Badge variant={trialDaysLeft <= 3 ? 'destructive' : 'secondary'} className="text-[10px] gap-1">
+                <Sparkles className="h-3 w-3" /> Trial · {trialDaysLeft}d
+              </Badge>
+            )}
           </div>
 
           {/* Navigation */}
