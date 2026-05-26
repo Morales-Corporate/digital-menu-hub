@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       alertas_stock: {
         Row: {
+          business_id: string
           created_at: string | null
           id: string
           insumo_id: string
@@ -23,6 +24,7 @@ export type Database = {
           mensaje: string
         }
         Insert: {
+          business_id?: string
           created_at?: string | null
           id?: string
           insumo_id: string
@@ -30,6 +32,7 @@ export type Database = {
           mensaje: string
         }
         Update: {
+          business_id?: string
           created_at?: string | null
           id?: string
           insumo_id?: string
@@ -48,6 +51,7 @@ export type Database = {
       }
       alertas_stock_config: {
         Row: {
+          business_id: string
           created_at: string | null
           email_destino: string | null
           id: string
@@ -57,6 +61,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          business_id?: string
           created_at?: string | null
           email_destino?: string | null
           id?: string
@@ -66,6 +71,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          business_id?: string
           created_at?: string | null
           email_destino?: string | null
           id?: string
@@ -78,6 +84,7 @@ export type Database = {
       }
       aperturas_caja: {
         Row: {
+          business_id: string
           created_at: string
           created_by: string | null
           diferencia: number | null
@@ -100,6 +107,7 @@ export type Database = {
           total_yape_plin: number
         }
         Insert: {
+          business_id?: string
           created_at?: string
           created_by?: string | null
           diferencia?: number | null
@@ -122,6 +130,7 @@ export type Database = {
           total_yape_plin?: number
         }
         Update: {
+          business_id?: string
           created_at?: string
           created_by?: string | null
           diferencia?: number | null
@@ -147,6 +156,7 @@ export type Database = {
       }
       asignacion_mesas: {
         Row: {
+          business_id: string
           created_at: string | null
           fecha: string
           id: string
@@ -156,6 +166,7 @@ export type Database = {
           turno: string
         }
         Insert: {
+          business_id?: string
           created_at?: string | null
           fecha?: string
           id?: string
@@ -165,6 +176,7 @@ export type Database = {
           turno?: string
         }
         Update: {
+          business_id?: string
           created_at?: string | null
           fecha?: string
           id?: string
@@ -183,8 +195,86 @@ export type Database = {
           },
         ]
       }
+      business_users: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          role_in_business: Database["public"]["Enums"]["business_user_role"]
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          role_in_business?: Database["public"]["Enums"]["business_user_role"]
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          role_in_business?: Database["public"]["Enums"]["business_user_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_users_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      businesses: {
+        Row: {
+          created_at: string
+          feature_flags: Json
+          id: string
+          is_default: boolean
+          name: string
+          owner_user_id: string | null
+          plan: Database["public"]["Enums"]["business_plan"]
+          slug: string | null
+          status: Database["public"]["Enums"]["business_status"]
+          subscription_ends_at: string | null
+          trial_ends_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          feature_flags?: Json
+          id?: string
+          is_default?: boolean
+          name: string
+          owner_user_id?: string | null
+          plan?: Database["public"]["Enums"]["business_plan"]
+          slug?: string | null
+          status?: Database["public"]["Enums"]["business_status"]
+          subscription_ends_at?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          feature_flags?: Json
+          id?: string
+          is_default?: boolean
+          name?: string
+          owner_user_id?: string | null
+          plan?: Database["public"]["Enums"]["business_plan"]
+          slug?: string | null
+          status?: Database["public"]["Enums"]["business_status"]
+          subscription_ends_at?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       categorias: {
         Row: {
+          business_id: string
           created_at: string | null
           id: string
           nombre: string
@@ -192,6 +282,7 @@ export type Database = {
           parent_id: string | null
         }
         Insert: {
+          business_id?: string
           created_at?: string | null
           id?: string
           nombre: string
@@ -199,6 +290,7 @@ export type Database = {
           parent_id?: string | null
         }
         Update: {
+          business_id?: string
           created_at?: string | null
           id?: string
           nombre?: string
@@ -217,6 +309,7 @@ export type Database = {
       }
       cierres_caja: {
         Row: {
+          business_id: string
           created_at: string
           created_by: string | null
           fecha: string
@@ -229,6 +322,7 @@ export type Database = {
           total_yape_plin: number
         }
         Insert: {
+          business_id?: string
           created_at?: string
           created_by?: string | null
           fecha: string
@@ -241,6 +335,7 @@ export type Database = {
           total_yape_plin?: number
         }
         Update: {
+          business_id?: string
           created_at?: string
           created_by?: string | null
           fecha?: string
@@ -256,6 +351,7 @@ export type Database = {
       }
       compras_insumos: {
         Row: {
+          business_id: string
           cantidad: number
           costo_total: number
           costo_unitario: number
@@ -267,6 +363,7 @@ export type Database = {
           proveedor: string | null
         }
         Insert: {
+          business_id?: string
           cantidad: number
           costo_total?: number
           costo_unitario?: number
@@ -278,6 +375,7 @@ export type Database = {
           proveedor?: string | null
         }
         Update: {
+          business_id?: string
           cantidad?: number
           costo_total?: number
           costo_unitario?: number
@@ -301,6 +399,7 @@ export type Database = {
       comprobantes: {
         Row: {
           anulado: boolean | null
+          business_id: string
           cliente_direccion: string | null
           cliente_documento: string | null
           cliente_nombre: string | null
@@ -319,6 +418,7 @@ export type Database = {
         }
         Insert: {
           anulado?: boolean | null
+          business_id?: string
           cliente_direccion?: string | null
           cliente_documento?: string | null
           cliente_nombre?: string | null
@@ -337,6 +437,7 @@ export type Database = {
         }
         Update: {
           anulado?: boolean | null
+          business_id?: string
           cliente_direccion?: string | null
           cliente_documento?: string | null
           cliente_nombre?: string | null
@@ -365,6 +466,7 @@ export type Database = {
       }
       configuracion_empresa: {
         Row: {
+          business_id: string
           created_at: string | null
           direccion: string | null
           email: string | null
@@ -384,6 +486,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          business_id?: string
           created_at?: string | null
           direccion?: string | null
           email?: string | null
@@ -403,6 +506,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          business_id?: string
           created_at?: string | null
           direccion?: string | null
           email?: string | null
@@ -426,6 +530,7 @@ export type Database = {
       costos_operativos: {
         Row: {
           activo: boolean
+          business_id: string
           categoria: string
           created_at: string | null
           id: string
@@ -436,6 +541,7 @@ export type Database = {
         }
         Insert: {
           activo?: boolean
+          business_id?: string
           categoria?: string
           created_at?: string | null
           id?: string
@@ -446,6 +552,7 @@ export type Database = {
         }
         Update: {
           activo?: boolean
+          business_id?: string
           categoria?: string
           created_at?: string | null
           id?: string
@@ -458,6 +565,7 @@ export type Database = {
       }
       descuentos_activos: {
         Row: {
+          business_id: string
           created_at: string | null
           id: string
           orden_id: string | null
@@ -468,6 +576,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          business_id?: string
           created_at?: string | null
           id?: string
           orden_id?: string | null
@@ -478,6 +587,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          business_id?: string
           created_at?: string | null
           id?: string
           orden_id?: string | null
@@ -506,6 +616,7 @@ export type Database = {
       }
       insumos: {
         Row: {
+          business_id: string
           costo_por_unidad: number
           created_at: string | null
           id: string
@@ -517,6 +628,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          business_id?: string
           costo_por_unidad?: number
           created_at?: string | null
           id?: string
@@ -528,6 +640,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          business_id?: string
           costo_por_unidad?: number
           created_at?: string | null
           id?: string
@@ -542,6 +655,7 @@ export type Database = {
       }
       menu_opcion_items: {
         Row: {
+          business_id: string
           categoria_id: string | null
           costo_adicional: number | null
           created_at: string | null
@@ -550,6 +664,7 @@ export type Database = {
           producto_id: string | null
         }
         Insert: {
+          business_id?: string
           categoria_id?: string | null
           costo_adicional?: number | null
           created_at?: string | null
@@ -558,6 +673,7 @@ export type Database = {
           producto_id?: string | null
         }
         Update: {
+          business_id?: string
           categoria_id?: string | null
           costo_adicional?: number | null
           created_at?: string | null
@@ -591,6 +707,7 @@ export type Database = {
       }
       menu_opciones: {
         Row: {
+          business_id: string
           cantidad: number | null
           categoria_id: string | null
           created_at: string | null
@@ -600,6 +717,7 @@ export type Database = {
           orden: number | null
         }
         Insert: {
+          business_id?: string
           cantidad?: number | null
           categoria_id?: string | null
           created_at?: string | null
@@ -609,6 +727,7 @@ export type Database = {
           orden?: number | null
         }
         Update: {
+          business_id?: string
           cantidad?: number | null
           categoria_id?: string | null
           created_at?: string | null
@@ -637,6 +756,7 @@ export type Database = {
       menus: {
         Row: {
           activo: boolean | null
+          business_id: string
           created_at: string | null
           descripcion: string | null
           id: string
@@ -647,6 +767,7 @@ export type Database = {
         }
         Insert: {
           activo?: boolean | null
+          business_id?: string
           created_at?: string | null
           descripcion?: string | null
           id?: string
@@ -657,6 +778,7 @@ export type Database = {
         }
         Update: {
           activo?: boolean | null
+          business_id?: string
           created_at?: string | null
           descripcion?: string | null
           id?: string
@@ -670,6 +792,7 @@ export type Database = {
       meseros: {
         Row: {
           activo: boolean | null
+          business_id: string
           created_at: string | null
           id: string
           nombre: string
@@ -679,6 +802,7 @@ export type Database = {
         }
         Insert: {
           activo?: boolean | null
+          business_id?: string
           created_at?: string | null
           id?: string
           nombre: string
@@ -688,6 +812,7 @@ export type Database = {
         }
         Update: {
           activo?: boolean | null
+          business_id?: string
           created_at?: string | null
           id?: string
           nombre?: string
@@ -735,6 +860,7 @@ export type Database = {
       }
       movimientos_caja: {
         Row: {
+          business_id: string
           created_at: string
           created_by: string | null
           fecha: string
@@ -744,6 +870,7 @@ export type Database = {
           tipo: string
         }
         Insert: {
+          business_id?: string
           created_at?: string
           created_by?: string | null
           fecha?: string
@@ -753,6 +880,7 @@ export type Database = {
           tipo: string
         }
         Update: {
+          business_id?: string
           created_at?: string
           created_by?: string | null
           fecha?: string
@@ -765,6 +893,7 @@ export type Database = {
       }
       orden_items: {
         Row: {
+          business_id: string
           cantidad: number
           created_at: string | null
           id: string
@@ -774,6 +903,7 @@ export type Database = {
           producto_id: string | null
         }
         Insert: {
+          business_id?: string
           cantidad?: number
           created_at?: string | null
           id?: string
@@ -783,6 +913,7 @@ export type Database = {
           producto_id?: string | null
         }
         Update: {
+          business_id?: string
           cantidad?: number
           created_at?: string | null
           id?: string
@@ -810,6 +941,7 @@ export type Database = {
       }
       ordenes: {
         Row: {
+          business_id: string
           comprobante_pago: string | null
           created_at: string | null
           entregado_at: string | null
@@ -829,6 +961,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          business_id?: string
           comprobante_pago?: string | null
           created_at?: string | null
           entregado_at?: string | null
@@ -848,6 +981,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          business_id?: string
           comprobante_pago?: string | null
           created_at?: string | null
           entregado_at?: string | null
@@ -878,6 +1012,7 @@ export type Database = {
       }
       producto_insumos: {
         Row: {
+          business_id: string
           cantidad: number
           created_at: string | null
           id: string
@@ -885,6 +1020,7 @@ export type Database = {
           producto_id: string
         }
         Insert: {
+          business_id?: string
           cantidad?: number
           created_at?: string | null
           id?: string
@@ -892,6 +1028,7 @@ export type Database = {
           producto_id: string
         }
         Update: {
+          business_id?: string
           cantidad?: number
           created_at?: string | null
           id?: string
@@ -918,6 +1055,7 @@ export type Database = {
       productos: {
         Row: {
           alergenos: string[] | null
+          business_id: string
           categoria_id: string | null
           created_at: string | null
           descripcion: string | null
@@ -933,6 +1071,7 @@ export type Database = {
         }
         Insert: {
           alergenos?: string[] | null
+          business_id?: string
           categoria_id?: string | null
           created_at?: string | null
           descripcion?: string | null
@@ -948,6 +1087,7 @@ export type Database = {
         }
         Update: {
           alergenos?: string[] | null
+          business_id?: string
           categoria_id?: string | null
           created_at?: string | null
           descripcion?: string | null
@@ -1024,6 +1164,7 @@ export type Database = {
       }
       puntos_usuario: {
         Row: {
+          business_id: string
           created_at: string | null
           id: string
           puntos_totales: number
@@ -1031,6 +1172,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          business_id?: string
           created_at?: string | null
           id?: string
           puntos_totales?: number
@@ -1038,6 +1180,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          business_id?: string
           created_at?: string | null
           id?: string
           puntos_totales?: number
@@ -1049,6 +1192,7 @@ export type Database = {
       recompensas: {
         Row: {
           activo: boolean | null
+          business_id: string
           created_at: string | null
           id: string
           nombre: string
@@ -1058,6 +1202,7 @@ export type Database = {
         }
         Insert: {
           activo?: boolean | null
+          business_id?: string
           created_at?: string | null
           id?: string
           nombre: string
@@ -1067,6 +1212,7 @@ export type Database = {
         }
         Update: {
           activo?: boolean | null
+          business_id?: string
           created_at?: string | null
           id?: string
           nombre?: string
@@ -1079,6 +1225,7 @@ export type Database = {
       rol_permisos: {
         Row: {
           acciones_especiales: Json | null
+          business_id: string
           crear: boolean
           created_at: string | null
           editar: boolean
@@ -1091,6 +1238,7 @@ export type Database = {
         }
         Insert: {
           acciones_especiales?: Json | null
+          business_id?: string
           crear?: boolean
           created_at?: string | null
           editar?: boolean
@@ -1103,6 +1251,7 @@ export type Database = {
         }
         Update: {
           acciones_especiales?: Json | null
+          business_id?: string
           crear?: boolean
           created_at?: string | null
           editar?: boolean
@@ -1133,6 +1282,7 @@ export type Database = {
       roles_custom: {
         Row: {
           activo: boolean
+          business_id: string
           created_at: string | null
           descripcion: string | null
           es_sistema: boolean
@@ -1142,6 +1292,7 @@ export type Database = {
         }
         Insert: {
           activo?: boolean
+          business_id?: string
           created_at?: string | null
           descripcion?: string | null
           es_sistema?: boolean
@@ -1151,6 +1302,7 @@ export type Database = {
         }
         Update: {
           activo?: boolean
+          business_id?: string
           created_at?: string | null
           descripcion?: string | null
           es_sistema?: boolean
@@ -1160,18 +1312,77 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_events: {
+        Row: {
+          business_id: string
+          created_at: string
+          created_by: string | null
+          event_type: string
+          id: string
+          next: Json | null
+          note: string | null
+          previous: Json | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          event_type: string
+          id?: string
+          next?: Json | null
+          note?: string | null
+          previous?: Json | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          event_type?: string
+          id?: string
+          next?: Json | null
+          note?: string | null
+          previous?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_events_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      super_admins: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
+          business_id: string
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
+          business_id?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
+          business_id?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
@@ -1183,6 +1394,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      business_is_operational: { Args: { _bid: string }; Returns: boolean }
+      current_business_id: { Args: never; Returns: string }
+      default_business_id: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1190,9 +1404,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_super_admin: { Args: { _uid: string }; Returns: boolean }
+      user_in_business: {
+        Args: { _bid: string; _uid: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "mesero" | "cocina"
+      business_plan: "trial" | "basic" | "pro" | "enterprise"
+      business_status: "active" | "expired" | "suspended" | "cancelled"
+      business_user_role: "owner" | "staff"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1321,6 +1543,9 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user", "mesero", "cocina"],
+      business_plan: ["trial", "basic", "pro", "enterprise"],
+      business_status: ["active", "expired", "suspended", "cancelled"],
+      business_user_role: ["owner", "staff"],
     },
   },
 } as const
