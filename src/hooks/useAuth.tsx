@@ -18,7 +18,7 @@ interface AuthContextType {
   isMesero: boolean;
   isCocina: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName?: string, businessName?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -135,15 +135,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, fullName?: string) => {
+  const signUp = async (email: string, password: string, fullName?: string, businessName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+
+    const data: Record<string, unknown> = { full_name: fullName };
+    if (businessName && businessName.trim()) {
+      data.create_business = 'true';
+      data.business_name = businessName.trim();
+    }
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
-        data: { full_name: fullName }
+        data,
       }
     });
     return { error };
