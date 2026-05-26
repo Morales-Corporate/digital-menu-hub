@@ -19,6 +19,7 @@ const loginSchema = z.object({
 
 const signUpSchema = loginSchema.extend({
   fullName: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
+  businessName: z.string().optional(),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Las contraseñas no coinciden',
@@ -43,7 +44,7 @@ export default function Auth() {
 
   const signUpForm = useForm<SignUpFormData>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { email: '', password: '', confirmPassword: '', fullName: '' },
+    defaultValues: { email: '', password: '', confirmPassword: '', fullName: '', businessName: '' },
   });
 
   useEffect(() => {
@@ -79,7 +80,7 @@ export default function Auth() {
 
   const handleSignUp = async (data: SignUpFormData) => {
     setIsSubmitting(true);
-    const { error } = await signUp(data.email, data.password, data.fullName);
+    const { error } = await signUp(data.email, data.password, data.fullName, data.businessName);
     setIsSubmitting(false);
 
     if (error) {
@@ -89,7 +90,10 @@ export default function Auth() {
         toast.error(error.message);
       }
     } else {
-      toast.success('Cuenta creada. Revisa tu email para confirmar.');
+      const msg = data.businessName?.trim()
+        ? '¡Cuenta creada! Tu negocio tiene 30 días de prueba gratis. Revisa tu email para confirmar.'
+        : 'Cuenta creada. Revisa tu email para confirmar.';
+      toast.success(msg);
       setIsLogin(true);
     }
   };
@@ -225,6 +229,19 @@ export default function Auth() {
                 />
                 <FormField
                   control={signUpForm.control}
+                  name="businessName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nombre del negocio <span className="text-xs text-muted-foreground">(opcional · 30 días gratis)</span></FormLabel>
+                      <FormControl>
+                        <Input placeholder="Mi Restaurante" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={signUpForm.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
@@ -283,7 +300,7 @@ export default function Auth() {
                 // Reset BOTH forms to avoid stale RHF state when switching providers
                 loginForm.reset({ email: '', password: '' });
                 loginForm.clearErrors();
-                signUpForm.reset({ email: '', password: '', confirmPassword: '', fullName: '' });
+                signUpForm.reset({ email: '', password: '', confirmPassword: '', fullName: '', businessName: '' });
                 signUpForm.clearErrors();
                 setIsSubmitting(false);
                 setIsLogin((v) => !v);
