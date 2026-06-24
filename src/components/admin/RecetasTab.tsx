@@ -36,6 +36,8 @@ export default function RecetasTab() {
   const [addDialog, setAddDialog] = useState(false);
   const [newInsumoId, setNewInsumoId] = useState('');
   const [newCantidad, setNewCantidad] = useState<number>(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingCantidad, setEditingCantidad] = useState<number>(0);
   const queryClient = useQueryClient();
 
   const { data: productos } = useQuery({
