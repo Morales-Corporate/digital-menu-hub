@@ -114,6 +114,7 @@ export default function Productos() {
         categoria_id: data.categoria_id || null,
         stock: data.stock,
         is_combo_item: data.is_combo_item,
+        tipo_producto: data.tipo_producto,
       };
       const { error } = await supabase.from('productos').update(updateData).eq('id', id);
       if (error) throw error;
