@@ -412,7 +412,27 @@ export default function RecetasTab() {
                           <TableRow key={r.id}>
                             <TableCell className="font-medium py-2.5">{ins?.nombre}</TableCell>
                             <TableCell className="text-right tabular-nums py-2.5">
-                              {cantidad % 1 === 0 ? cantidad : cantidad.toFixed(2)}
+                              {editingId === r.id ? (
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  autoFocus
+                                  className="h-8 w-24 ml-auto text-right"
+                                  value={editingCantidad}
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => setEditingCantidad(parseFloat(e.target.value) || 0)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && editingCantidad > 0) {
+                                      updateMutation.mutate({ id: r.id, cantidad: editingCantidad });
+                                    } else if (e.key === 'Escape') {
+                                      setEditingId(null);
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                cantidad % 1 === 0 ? cantidad : cantidad.toFixed(2)
+                              )}
                             </TableCell>
                             <TableCell className="py-2.5">
                               <Badge variant="secondary" className="font-mono text-[11px]">{getUnitLabel(unit)}</Badge>
@@ -439,18 +459,55 @@ export default function RecetasTab() {
                               </div>
                             </TableCell>
                             <TableCell className="py-2.5">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => {
-                                  if (confirm(`¿Eliminar ${ins?.nombre} de la receta?`)) {
-                                    removeMutation.mutate(r.id);
-                                  }
-                                }}
-                              >
-                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                              </Button>
+                              <div className="flex items-center justify-end gap-0.5">
+                                {editingId === r.id ? (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      disabled={editingCantidad <= 0 || updateMutation.isPending}
+                                      onClick={() => updateMutation.mutate({ id: r.id, cantidad: editingCantidad })}
+                                    >
+                                      <Check className="h-4 w-4 text-green-600" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={() => setEditingId(null)}
+                                    >
+                                      <X className="h-4 w-4 text-muted-foreground" />
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={() => {
+                                        setEditingId(r.id);
+                                        setEditingCantidad(cantidad);
+                                      }}
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={() => {
+                                        if (confirm(`¿Eliminar ${ins?.nombre} de la receta?`)) {
+                                          removeMutation.mutate(r.id);
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
