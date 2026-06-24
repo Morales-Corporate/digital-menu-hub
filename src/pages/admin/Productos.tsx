@@ -149,7 +149,8 @@ export default function Productos() {
       categoria_id: undefined,
       disponible: true,
       stock: null,
-      is_combo_item: false
+      is_combo_item: false,
+      tipo_producto: 'elaborado',
     });
     setDialogOpen(true);
   };
