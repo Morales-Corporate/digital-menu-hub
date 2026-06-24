@@ -1067,6 +1067,7 @@ export type Database = {
           nombre: string
           precio: number
           stock: number | null
+          tipo_producto: Database["public"]["Enums"]["tipo_producto"]
           updated_at: string | null
         }
         Insert: {
@@ -1083,6 +1084,7 @@ export type Database = {
           nombre: string
           precio?: number
           stock?: number | null
+          tipo_producto?: Database["public"]["Enums"]["tipo_producto"]
           updated_at?: string | null
         }
         Update: {
@@ -1099,6 +1101,7 @@ export type Database = {
           nombre?: string
           precio?: number
           stock?: number | null
+          tipo_producto?: Database["public"]["Enums"]["tipo_producto"]
           updated_at?: string | null
         }
         Relationships: [
@@ -1415,6 +1418,7 @@ export type Database = {
       business_plan: "trial" | "basic" | "pro" | "enterprise"
       business_status: "active" | "expired" | "suspended" | "cancelled"
       business_user_role: "owner" | "staff"
+      tipo_producto: "elaborado" | "reventa"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1546,6 +1550,7 @@ export const Constants = {
       business_plan: ["trial", "basic", "pro", "enterprise"],
       business_status: ["active", "expired", "suspended", "cancelled"],
       business_user_role: ["owner", "staff"],
+      tipo_producto: ["elaborado", "reventa"],
     },
   },
 } as const

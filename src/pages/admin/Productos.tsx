@@ -30,6 +30,7 @@ const productoSchema = z.object({
   disponible: z.boolean(),
   stock: z.number().min(0, 'El stock debe ser positivo').nullable(),
   is_combo_item: z.boolean(),
+  tipo_producto: z.enum(['elaborado', 'reventa']),
 });
 
 type ProductoFormData = z.infer<typeof productoSchema>;
