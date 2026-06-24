@@ -310,6 +310,30 @@ export default function Productos() {
                   />
                   <FormField
                     control={form.control}
+                    name="tipo_producto"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tipo de producto</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="elaborado">Elaborado · usa receta e insumos</SelectItem>
+                            <SelectItem value="reventa">Reventa · stock directo, sin receta</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Elaborado: consume insumos por receta. Reventa: descuenta stock del producto al vender.
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
                     name="stock"
                     render={({ field }) => (
                       <FormItem>
