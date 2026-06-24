@@ -30,6 +30,7 @@ const productoSchema = z.object({
   disponible: z.boolean(),
   stock: z.number().min(0, 'El stock debe ser positivo').nullable(),
   is_combo_item: z.boolean(),
+  tipo_producto: z.enum(['elaborado', 'reventa']),
 });
 
 type ProductoFormData = z.infer<typeof productoSchema>;
@@ -49,7 +50,8 @@ export default function Productos() {
       categoria_id: undefined,
       disponible: true,
       stock: null,
-      is_combo_item: false
+      is_combo_item: false,
+      tipo_producto: 'elaborado',
     },
   });
 
@@ -88,6 +90,7 @@ export default function Productos() {
         categoria_id: data.categoria_id || null,
         stock: data.stock,
         is_combo_item: data.is_combo_item,
+        tipo_producto: data.tipo_producto,
       };
       const { error } = await supabase.from('productos').insert([insertData]);
       if (error) throw error;
@@ -111,6 +114,7 @@ export default function Productos() {
         categoria_id: data.categoria_id || null,
         stock: data.stock,
         is_combo_item: data.is_combo_item,
+        tipo_producto: data.tipo_producto,
       };
       const { error } = await supabase.from('productos').update(updateData).eq('id', id);
       if (error) throw error;
@@ -145,7 +149,8 @@ export default function Productos() {
       categoria_id: undefined,
       disponible: true,
       stock: null,
-      is_combo_item: false
+      is_combo_item: false,
+      tipo_producto: 'elaborado',
     });
     setDialogOpen(true);
   };
@@ -161,6 +166,7 @@ export default function Productos() {
       disponible: producto.disponible ?? true,
       stock: producto.stock ?? null,
       is_combo_item: (producto as any).is_combo_item ?? false,
+      tipo_producto: ((producto as any).tipo_producto ?? 'elaborado') as 'elaborado' | 'reventa',
     });
     setDialogOpen(true);
   };
@@ -298,6 +304,30 @@ export default function Productos() {
                         <FormControl>
                           <Input placeholder="https://..." {...field} />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="tipo_producto"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tipo de producto</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="elaborado">Elaborado · usa receta e insumos</SelectItem>
+                            <SelectItem value="reventa">Reventa · stock directo, sin receta</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Elaborado: consume insumos por receta. Reventa: descuenta stock del producto al vender.
+                        </p>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -459,9 +489,21 @@ export default function Productos() {
                     {producto.descripcion || 'Sin descripción'}
                   </p>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs bg-secondary px-2 py-1 rounded-full">
-                      {getCategoriaName(producto.categoria_id)}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs bg-secondary px-2 py-1 rounded-full">
+                        {getCategoriaName(producto.categoria_id)}
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className={
+                          ((producto as any).tipo_producto ?? 'elaborado') === 'reventa'
+                            ? 'text-[10px] border-blue-400/50 text-blue-600 dark:text-blue-400'
+                            : 'text-[10px] border-amber-400/50 text-amber-600 dark:text-amber-400'
+                        }
+                      >
+                        {((producto as any).tipo_producto ?? 'elaborado') === 'reventa' ? 'Reventa' : 'Elaborado'}
+                      </Badge>
+                    </div>
                     <div className="flex gap-1">
                       <Button 
                         variant="ghost" 
