@@ -489,9 +489,21 @@ export default function Productos() {
                     {producto.descripcion || 'Sin descripción'}
                   </p>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs bg-secondary px-2 py-1 rounded-full">
-                      {getCategoriaName(producto.categoria_id)}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs bg-secondary px-2 py-1 rounded-full">
+                        {getCategoriaName(producto.categoria_id)}
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className={
+                          ((producto as any).tipo_producto ?? 'elaborado') === 'reventa'
+                            ? 'text-[10px] border-blue-400/50 text-blue-600 dark:text-blue-400'
+                            : 'text-[10px] border-amber-400/50 text-amber-600 dark:text-amber-400'
+                        }
+                      >
+                        {((producto as any).tipo_producto ?? 'elaborado') === 'reventa' ? 'Reventa' : 'Elaborado'}
+                      </Badge>
+                    </div>
                     <div className="flex gap-1">
                       <Button 
                         variant="ghost" 
