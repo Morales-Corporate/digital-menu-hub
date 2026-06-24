@@ -156,6 +156,19 @@ export default function RecetasTab() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, cantidad }: { id: string; cantidad: number }) => {
+      const { error } = await supabase.from('producto_insumos').update({ cantidad }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['producto_insumos', selectedProducto] });
+      toast.success('Cantidad actualizada');
+      setEditingId(null);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   // Costos siempre dinámicos: recalcula con costo actual del insumo
   const costoTotal = (receta || []).reduce(
     (acc: number, r: any) => acc + Number(r.cantidad) * Number(r.insumos?.costo_por_unidad || 0),
