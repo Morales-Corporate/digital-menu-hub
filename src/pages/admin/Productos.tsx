@@ -166,6 +166,7 @@ export default function Productos() {
       disponible: producto.disponible ?? true,
       stock: producto.stock ?? null,
       is_combo_item: (producto as any).is_combo_item ?? false,
+      tipo_producto: ((producto as any).tipo_producto ?? 'elaborado') as 'elaborado' | 'reventa',
     });
     setDialogOpen(true);
   };
