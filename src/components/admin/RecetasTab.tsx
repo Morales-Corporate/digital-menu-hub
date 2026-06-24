@@ -172,6 +172,32 @@ export default function RecetasTab() {
       {/* Sidebar de productos */}
       <Card className="h-fit lg:sticky lg:top-4">
         <CardContent className="p-3 space-y-3">
+          {/* Contadores */}
+          <div className="grid grid-cols-3 gap-1.5 text-center">
+            <div className="rounded-md bg-muted/50 py-1.5">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Elaborados</p>
+              <p className="text-sm font-bold tabular-nums">{productosElaborados.length}</p>
+            </div>
+            <div className="rounded-md bg-green-500/10 py-1.5">
+              <p className="text-[10px] uppercase tracking-wider text-green-700 dark:text-green-400">Con receta</p>
+              <p className="text-sm font-bold tabular-nums text-green-700 dark:text-green-400">{conReceta}</p>
+            </div>
+            <div className="rounded-md bg-orange-500/10 py-1.5">
+              <p className="text-[10px] uppercase tracking-wider text-orange-700 dark:text-orange-400">Sin receta</p>
+              <p className="text-sm font-bold tabular-nums text-orange-700 dark:text-orange-400">{sinReceta}</p>
+            </div>
+          </div>
+
+          {/* Alerta sin receta */}
+          {sinReceta > 0 && (
+            <div className="rounded-md border border-orange-400/50 bg-orange-50 dark:bg-orange-950/20 px-2.5 py-2 flex items-start gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5 text-orange-500 mt-0.5 shrink-0" />
+              <p className="text-[11px] text-orange-700 dark:text-orange-300 leading-tight">
+                {sinReceta} {sinReceta === 1 ? 'producto elaborado aún no tiene' : 'productos elaborados aún no tienen'} receta configurada.
+              </p>
+            </div>
+          )}
+
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -181,11 +207,35 @@ export default function RecetasTab() {
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-          <div className="max-h-[60vh] overflow-y-auto -mx-1 px-1 space-y-1">
+
+          {/* Filtros */}
+          <div className="flex gap-1">
+            {([
+              ['todos', 'Todos'],
+              ['con', 'Con receta'],
+              ['sin', 'Sin receta'],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setFiltroReceta(key)}
+                className={cn(
+                  'flex-1 text-[11px] py-1 rounded-md border transition-colors',
+                  filtroReceta === key
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background border-border hover:bg-muted'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="max-h-[55vh] overflow-y-auto -mx-1 px-1 space-y-1">
             {productosFiltered.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-6">Sin productos</p>
             ) : productosFiltered.map((p: any) => {
               const isActive = p.id === selectedProducto;
+              const tiene = (recetaCounts?.get(p.id) || 0) > 0;
               return (
                 <button
                   key={p.id}
@@ -198,7 +248,16 @@ export default function RecetasTab() {
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="truncate font-medium">{p.nombre}</span>
+                    <span className="truncate font-medium flex items-center gap-1.5">
+                      <span
+                        className={cn(
+                          'h-1.5 w-1.5 rounded-full shrink-0',
+                          tiene ? 'bg-green-500' : 'bg-orange-400'
+                        )}
+                        title={tiene ? 'Con receta' : 'Sin receta'}
+                      />
+                      <span className="truncate">{p.nombre}</span>
+                    </span>
                     <span className={cn(
                       "text-[11px] shrink-0 tabular-nums",
                       isActive ? "text-primary-foreground/80" : "text-muted-foreground"
