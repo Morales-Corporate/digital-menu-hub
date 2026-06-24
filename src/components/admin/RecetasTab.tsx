@@ -400,7 +400,7 @@ export default function RecetasTab() {
                               {cantidad % 1 === 0 ? cantidad : cantidad.toFixed(2)}
                             </TableCell>
                             <TableCell className="py-2.5">
-                              <Badge variant="secondary" className="font-mono text-[11px]">{unit}</Badge>
+                              <Badge variant="secondary" className="font-mono text-[11px]">{getUnitLabel(unit)}</Badge>
                             </TableCell>
                             <TableCell className="text-right tabular-nums py-2.5 font-medium">
                               S/ {costo.toFixed(2)}
