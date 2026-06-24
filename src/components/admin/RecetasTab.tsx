@@ -32,6 +32,7 @@ function formatStock(value: number, unit: string): string {
 export default function RecetasTab() {
   const [selectedProducto, setSelectedProducto] = useState<string>('');
   const [search, setSearch] = useState('');
+  const [filtroReceta, setFiltroReceta] = useState<'todos' | 'con' | 'sin'>('todos');
   const [addDialog, setAddDialog] = useState(false);
   const [newInsumoId, setNewInsumoId] = useState('');
   const [newCantidad, setNewCantidad] = useState<number>(0);
@@ -55,6 +56,18 @@ export default function RecetasTab() {
     },
   });
 
+  // Cuenta de insumos por producto (para distinguir con/sin receta)
+  const { data: recetaCounts } = useQuery({
+    queryKey: ['producto_insumos_counts'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('producto_insumos').select('producto_id');
+      if (error) throw error;
+      const map = new Map<string, number>();
+      (data || []).forEach((r: any) => map.set(r.producto_id, (map.get(r.producto_id) || 0) + 1));
+      return map;
+    },
+  });
+
   const { data: receta, isLoading: loadingReceta } = useQuery({
     queryKey: ['producto_insumos', selectedProducto],
     queryFn: async () => {
@@ -68,6 +81,18 @@ export default function RecetasTab() {
     },
     enabled: !!selectedProducto,
   });
+
+  // Solo productos elaborados aparecen en recetas
+  const productosElaborados = useMemo(
+    () => (productos || []).filter((p: any) => (p.tipo_producto ?? 'elaborado') === 'elaborado'),
+    [productos]
+  );
+
+  const conReceta = useMemo(
+    () => productosElaborados.filter((p: any) => (recetaCounts?.get(p.id) || 0) > 0).length,
+    [productosElaborados, recetaCounts]
+  );
+  const sinReceta = productosElaborados.length - conReceta;
 
   const productoActual = productos?.find((p: any) => p.id === selectedProducto);
   const selectedInsumo = insumos?.find((i: any) => i.id === newInsumoId);
@@ -86,11 +111,15 @@ export default function RecetasTab() {
   );
 
   const productosFiltered = useMemo(() => {
-    if (!productos) return [];
-    if (!search.trim()) return productos;
-    const q = search.toLowerCase();
-    return productos.filter((p: any) => p.nombre.toLowerCase().includes(q));
-  }, [productos, search]);
+    let list = productosElaborados;
+    if (filtroReceta === 'con') list = list.filter((p: any) => (recetaCounts?.get(p.id) || 0) > 0);
+    else if (filtroReceta === 'sin') list = list.filter((p: any) => (recetaCounts?.get(p.id) || 0) === 0);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((p: any) => p.nombre.toLowerCase().includes(q));
+    }
+    return list;
+  }, [productosElaborados, recetaCounts, search, filtroReceta]);
 
   const addMutation = useMutation({
     mutationFn: async () => {
