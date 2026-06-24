@@ -132,6 +132,7 @@ export default function RecetasTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['producto_insumos', selectedProducto] });
+      queryClient.invalidateQueries({ queryKey: ['producto_insumos_counts'] });
       toast.success('Insumo agregado a la receta');
       setAddDialog(false);
       setNewInsumoId('');
@@ -147,6 +148,7 @@ export default function RecetasTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['producto_insumos', selectedProducto] });
+      queryClient.invalidateQueries({ queryKey: ['producto_insumos_counts'] });
       toast.success('Insumo removido');
     },
     onError: (e: any) => toast.error(e.message),
