@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from 'sonner';
 import {
   Plus, Trash2, Loader2, BookOpen, AlertTriangle, ChefHat, Wallet,
-  TrendingUp, Percent, Search, CheckCircle2,
+  TrendingUp, Percent, Search, CheckCircle2, Pencil, Check, X,
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
